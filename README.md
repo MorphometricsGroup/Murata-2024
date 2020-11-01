@@ -6,4 +6,6 @@ view_mat : 外部パラメータ
 
 csv_test : 検証用に画像をcsvに書き出したもの
 
+image : 画像
+
 curve_extraction.ipynb : main
