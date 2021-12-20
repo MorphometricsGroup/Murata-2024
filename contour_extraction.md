@@ -171,7 +171,7 @@ def camera_correspondence(cam_list):
         for j, vec2 in enumerate(vec_list):
             if i == j or i > j :
                 continue
-            elif dim3_distance(vec1,vec2) < 200:
+            elif dim3_distance(vec1,vec2) < 0.65:
                 pair_list.append((i,j))
     
     return pair_list
@@ -203,7 +203,7 @@ def cal_angle_all(cam_list):
             cam1_pos = cam1.cam_world_cood
             cam2_pos = cam2.cam_world_cood
             angle = cal_angle(cam1_pos, cam2_pos, cam_mean)
-            if angle < 5/9*np.pi:
+            if angle < 1/9*np.pi:
                 pair_list.append((i,j))
     return pair_list
 ```
@@ -346,17 +346,17 @@ import matplotlib.pyplot as plt
 ```
 
 ```python
-cam_list = [Camera(i) for i in range(24)]
+cam_list = [Camera(i) for i in range(0,48)]
 for i in range(len(cam_list)):
-    cam_list[i].img_load()
-    cam_list[i].contour_extraction()
-    cam_list[i].para_load()
+    cam_list[i-1].img_load()
+    cam_list[i-1].contour_extraction()
+    cam_list[i-1].para_load()
 ```
 
 ```python
 # エピポール取得
 #cam_pairs = cal_angle_all(cam_list)
-cam_pairs = camera_correspondence(cam_list)
+cam_pairs = cal_angle_all(cam_list)
 
 epipole_list = np.zeros((int(len(cam_pairs)*2),2))
 epipole_list_idx = np.zeros(int(len(cam_pairs)*2))
@@ -498,8 +498,6 @@ trim_all_frag()
 ```
 
 ```python
-# ここまではfix(各処理に最適化をかけられるならそうするがそこまで遅くない)
-#
 # マスク，パラメータの読み込みはoverrideで書く
 #
 # ここまでの処理でできたもの
@@ -510,6 +508,24 @@ trim_all_frag()
 # cam_pairs_F_array
 # F_pair_list
 # ペアに対するF行列
+```
+
+```python
+cnum = 30
+new_img = np.zeros((cam_list[0].img.shape[0],cam_list[0].img.shape[1]),dtype=np.bool8)
+
+for j in range(len(cam_list[cnum].frag_list)):
+    curve = cam_list[cnum].frag_list[j][~np.isnan(cam_list[cnum].frag_list[j])].reshape((-1,2)).astype(int)
+    new_img[curve[:,1],curve[:,0]]=True
+```
+
+```python
+%matplotlib inline
+fig = plt.figure(figsize = (20, 20))
+fig.patch.set_alpha(0.)
+# 3DAxesを追加
+ax = fig.add_subplot(111)
+plt.imshow(new_img)
 ```
 
 ```python
@@ -566,8 +582,12 @@ def get_frag_cood(frag_list):
 
 # 外積計算，ここのbroadcastが重い
 def coll_t1_t2(epi_cood_S, epi_cood_F, cood_S, cood_F):
-    epi_cood_S_bro = np.array([np.broadcast_to(aa, (len(cood_S), 2)) for aa in epi_cood_S])
-    epi_cood_F_bro = np.array([np.broadcast_to(aa, (len(cood_S), 2)) for aa in epi_cood_F])
+    #epi_cood_S_bro = np.array([np.broadcast_to(aa, (len(cood_S), 2)) for aa in epi_cood_S])
+    #epi_cood_F_bro = np.array([np.broadcast_to(aa, (len(cood_S), 2)) for aa in epi_cood_F])
+    
+    epi_cood_S_bro = np.repeat(epi_cood_S,len(cood_S),axis=0).reshape((epi_cood_S.shape[0],len(cood_S),epi_cood_S.shape[1]))
+    epi_cood_F_bro = np.repeat(epi_cood_F,len(cood_S),axis=0).reshape((epi_cood_F.shape[0],len(cood_S),epi_cood_F.shape[1]))
+    
     v = cood_S - epi_cood_S_bro
     v2 = cood_F - cood_S
     v1 = epi_cood_F_bro - epi_cood_S_bro
@@ -595,7 +615,7 @@ def pair_and_key_gen(F, pair):
     frags_para12 = epilines_para(cam_list[pair[0]].frag_list, F) # frags_para[色][frag]
     frags_para21 = epilines_para(cam_list[pair[1]].frag_list, F.T)
     if cam_list[pair[0]].frag_list.size == 0 or cam_list[pair[1]].frag_list.size == 0:
-        return None, None, None, None
+        return None
     cood_S, cood_F = get_frag_cood(cam_list[pair[1]].frag_list)
     epi_cood_S, epi_cood_F = all_pa2co(frags_para12)
     img_list1 = make_pair_list(epi_cood_S, epi_cood_F, cood_S, cood_F)
@@ -642,6 +662,8 @@ result = joblib.Parallel(n_jobs=-1)(joblib.delayed(wrapper_pair_and_key_gen)(i) 
 pair_list = []
 key_list = []
 for i in result:
+    if i == None:
+        continue
     pair_F, key_F, pair_R, key_R =i
     pair_list.append(pair_F)
     pair_list.append(pair_R)
@@ -784,13 +806,13 @@ def interpret_o_key(tag_list_list_list):
 ```
 
 ```python
-s = make_key_set(pair_list, key_list, len(cam_list))
-o_keys = all_organize_keys(s)
-inted_o_key = interpret_o_key(o_keys)
+#s = make_key_set(pair_list, key_list, len(cam_list))
+#o_keys = all_organize_keys(s)
+#inted_o_key = interpret_o_key(o_keys)
 ```
 
 ```python
-def FR_cheacker(key, cam_list):
+def FR_cheacker(key, pair_list, cam_list):
     F = cam_pairs_F_array[F_pair_list.index(key[0])]
     if key[1] == "F":
         frags_para = epilines_para(cam_list[key[0][0]].frag_list, F) # frags_para[色][frag]
@@ -815,8 +837,12 @@ def PL_coll(key, pair_list, cam_list):
         v1_n = (v1[:,0]**2+v1[:,1]**2)**(1/2)
         v1_n = np.stack([v1_n, v1_n], axis=1)
         v1 = v1/v1_n
-        v1_bro = np.array([np.broadcast_to(aa, (len(pts), 2)) for aa in v1])
-        epi_cood_S_bro = np.array([np.broadcast_to(aa, (len(pts), 2)) for aa in epi_S_frag])
+        #v1_bro = np.array([np.broadcast_to(aa, (len(pts), 2)) for aa in v1])
+        #epi_cood_S_bro = np.array([np.broadcast_to(aa, (len(pts), 2)) for aa in epi_S_frag])
+        
+        v1_bro = np.repeat(v1,len(pts),axis=0).reshape((v1.shape[0],len(pts),v1.shape[1]))
+        epi_cood_S_bro = np.repeat(epi_S_frag,len(pts),axis=0).reshape((epi_S_frag.shape[0],len(pts),epi_S_frag.shape[1]))
+        
         v2 = pts - epi_cood_S_bro
         v2_n = (v2[:,:,0]**2+v2[:,:,1]**2)**(1/2)
         v2_n = np.stack([v2_n, v2_n], axis=2)
@@ -827,7 +853,8 @@ def PL_coll(key, pair_list, cam_list):
 ```
 
 ```python code_folding=[]
-%%time # Wall time: 2min 8s
+%%time
+# Wall time: 2min 8s
 # 点と線の衝突判定
 coll_list = []
 for key in key_list:
@@ -893,113 +920,77 @@ for i in range(len(key_list)):
 ```
 
 ```python
-"""
-# 前を入れて後のidxを返す関数，対応するidxが無ければ補完する
-def fb_idx(f_pair_part, b_pair_part):
-            
-    return idx
-"""
+#pre_test_list = []
+#new_inted_o_key = np.concatenate([np.arange(inted_o_key[0][0].shape[1]).reshape(1,-1),inted_o_key[0][0]])
+#for row in new_inted_o_key.T:
+#    for key, idx in zip(o_keys[0][0], row):
+#        print(key, idx)
+#        pre_test_list.append(pair_pt[key_list.index(key)][idx])
+#        # pre_test_listを上手く処理する関数
+#    break
 ```
 
 ```python
-"""init_tag = o_keys[0][0][0]
-for i, idx in enumerate(inted_o_key[0][0].T):
-    print(i)
-    print(idx)
-    init_pair = pair_pt[init_tag]
-    pair_0 = init_pair[i]
-    
-    sub_pair_part = init_pair[1]
-    for j in range(len(o_keys[0][0])):
-        if j == 0:
-            continue
-        sub_pair_idx = idx[j-1]
-        sub_pair = pair_pt[o_keys[0][0][j]][sub_pair_idx]
-        
-
-        
-        fb_i = fb_idx(sub_pair_part, sub_pair[0])
-        counterpart = sub_pair[1][fb_i]
-        sub_pair_part = sub_pair[1]
-        # init_pairにstackしていく
-        
-        
-        
-    break"""
+# pre_test_listを上手く処理する関数
+#for i, idx in enumerate(pre_test_list):
+#    if i == 0:
+#        new_test_list = idx
+#    else:
+#        forward = new_test_list[-1]
+#        for j in forward:
+#            print(np.where(idx[0] == j))
 ```
 
 ```python
-"""def untangled_key(o_key):
-    untangled_list = []
-    for idx, tag in enumerate(o_key):
-        if tag[1] == "F":
-            untangled_list.append(tag[0][0])
-        elif tag[1] == "R":
-            untangled_list.append(tag[0][1])
+#"""def pt_correspondence_graph(key, correspondence, pair_pt):
+#
+#    pair_1 = pair_pt[key[0]]
+#    pair_2 = pair_pt[key[1]]
+#
+#    pt_corr_list = []
 
-        if idx == len(o_key)-1:
-            if tag[1] == "F":
-                untangled_list.append(tag[0][1])
-            elif tag[1] == "R":
-                untangled_list.append(tag[0][0])
-    return untangled_list"""
-```
+#    for cam1_frag_idx, cam2_frag_idx in zip(correspondence[:,0], correspondence[:,1]):
+#        cam1_cood_idx, cam2_cood_idx = pair_1[cam1_frag_idx]
+#        pre_cam2_cood_idx, pre_cam3_cood_idx = pair_2[cam2_frag_idx]
+#        pre_sub_idx = 0
+#        cam3_cood_idx = np.zeros(cam2_cood_idx.shape)
+#
+#        for i, sub_cood_idx in enumerate(cam2_cood_idx):
+#            sub_idx = np.where(pre_cam2_cood_idx == sub_cood_idx)
+#            if len(sub_idx[0]) > 1:
+#                idx_diff = 100
+#                for j in sub_idx:
+#                    temp_idx_diff = abs(j-pre_sub_idx)
+#                    if temp_idx_diff < idx_diff:
+#                        sub_idx = j
+#                        idx_diff = temp_idx_diff
+#
+#            elif sub_idx[0].size == 0:
+#                sub_idx = None
+#
+#            else:
+#                sub_idx = sub_idx[0][0]
+#
+#            if sub_idx != None:
+#                cam3_cood_idx[i] = pre_cam3_cood_idx[sub_idx]
+#            else:
+#                cam3_cood_idx[i] = np.nan
+#            pre_sub_idx = sub_idx
+#        pt_corr = np.array([cam1_cood_idx, cam2_cood_idx, cam3_cood_idx])
+#        pt_corr_list.append(pt_corr)
+#    return pt_corr_list
 
-```python
-"""def pt_correspondence_graph(key, correspondence, pair_pt):
-
-    pair_1 = pair_pt[key[0]]
-    pair_2 = pair_pt[key[1]]
-
-    pt_corr_list = []
-
-    for cam1_frag_idx, cam2_frag_idx in zip(correspondence[:,0], correspondence[:,1]):
-        cam1_cood_idx, cam2_cood_idx = pair_1[cam1_frag_idx]
-        pre_cam2_cood_idx, pre_cam3_cood_idx = pair_2[cam2_frag_idx]
-        pre_sub_idx = 0
-        cam3_cood_idx = np.zeros(cam2_cood_idx.shape)
-
-        for i, sub_cood_idx in enumerate(cam2_cood_idx):
-            sub_idx = np.where(pre_cam2_cood_idx == sub_cood_idx)
-            if len(sub_idx[0]) > 1:
-                idx_diff = 100
-                for j in sub_idx:
-                    temp_idx_diff = abs(j-pre_sub_idx)
-                    if temp_idx_diff < idx_diff:
-                        sub_idx = j
-                        idx_diff = temp_idx_diff
-
-            elif sub_idx[0].size == 0:
-                sub_idx = None
-
-            else:
-                sub_idx = sub_idx[0][0]
-
-            if sub_idx != None:
-                cam3_cood_idx[i] = pre_cam3_cood_idx[sub_idx]
-            else:
-                cam3_cood_idx[i] = np.nan
-            pre_sub_idx = sub_idx
-        pt_corr = np.array([cam1_cood_idx, cam2_cood_idx, cam3_cood_idx])
-        pt_corr_list.append(pt_corr)
-    return pt_corr_list
-
-def all_pt_corr_graph(key_order, correspondence_list, pair_pt):
-    main_list = []
-    for main in range(len(key_order)):
-        sub_list = []
-        for sub in range(len(key_order[main])):
-            key = key_order[main][sub]
-            correspondence = correspondence_list[main][sub]
-            pt_corr_list = pt_correspondence_graph(key, correspondence, pair_pt)
-            sub_list.append(pt_corr_list)
-        main_list.append(sub_list)
-    return main_list"""
-```
-
-```python
-"""pt_corr_graph_list = all_pt_corr_graph(key_order, correspondence_list, pair_pt)
-#pt_corr_graph_list[cam][key_order][curve_num][curves]"""
+#def all_pt_corr_graph(key_order, correspondence_list, pair_pt):
+#    main_list = []
+#    for main in range(len(key_order)):
+#        sub_list = []
+#        for sub in range(len(key_order[main])):
+#            key = key_order[main][sub]
+#            correspondence = correspondence_list[main][sub]
+#            pt_corr_list = pt_correspondence_graph(key, correspondence, pair_pt)
+#            sub_list.append(pt_corr_list)
+#        main_list.append(sub_list)
+#    return main_list"""
 ```
 
 ```python
@@ -1037,12 +1028,13 @@ for i, key in enumerate(key_list):
 
 ```python
 def FR_check(key):
-    if dict_tag[1] == "F":
+    if key[1] == "F":
         P1 = cam_list[key[0][0]].P
         P2 = cam_list[key[0][1]].P
         F = cam_pairs_F_array[F_pair_list.index(key[0])]
         return P1, P2, F
-    elif dict_tag[1] == "R":
+    
+    elif key[1] == "R":
         P1 = cam_list[key[0][1]].P
         P2 = cam_list[key[0][0]].P
         F = cam_pairs_F_array[F_pair_list.index(key[0])]
@@ -1050,25 +1042,33 @@ def FR_check(key):
 ```
 
 ```python
-TDlines = {}
-for i, j in enumerate(coordinate_dict):
+def Three_dim_lines_reconst(key_list, coordinate_list):
     
-    pts = coordinate_dict[j]
-    P1_ori, P2_ori, F_ori = FR_check(j)
-    #pt, sep_list = connect_points(pts)
-    temp_TDlines = []
-    for pt in pts:
-        pt = np.transpose(pt, (1, 0, 2))
-        F = np.broadcast_to(F_ori, (pt.shape[0],3,3))
-        P1 = np.broadcast_to(P1_ori, (pt.shape[0],3,4))
-        P2 = np.broadcast_to(P2_ori, (pt.shape[0],3,4))
-        newcoords= np.array(list(map(min_dist, F, pt[:,1,:], pt[:,0,:])))
-        tri_pt = np.array(list(map(tri, P1, P2, newcoords[:,1,:], newcoords[:,0,:])))
-        #pts_array = sep_array(tri_pt, sep_list)
-        temp_TDlines.append(tri_pt)
-    TDlines[j] = temp_TDlines
-    print((i+1)/len(coordinate_dict)*100)
+    TDlines = []
+    for i, pts in enumerate(coordinate_list):
+        P1_ori, P2_ori, F_ori = FR_check(key_list[i])
+        temp_TDlines = []
+        for pt in pts:
+            pt = np.transpose(pt, (1, 0, 2))
+            F = np.broadcast_to(F_ori, (pt.shape[0],3,3))
+            P1 = np.broadcast_to(P1_ori, (pt.shape[0],3,4))
+            P2 = np.broadcast_to(P2_ori, (pt.shape[0],3,4))
+            newcoords= np.array(list(map(min_dist, F, pt[:,1,:], pt[:,0,:])))
+            tri_pt = np.array(list(map(tri, P1, P2, newcoords[:,1,:], newcoords[:,0,:])))
+            #pts_array = sep_array(tri_pt, sep_list)
+            temp_TDlines.append(tri_pt)
+        TDlines.append(temp_TDlines)
+        print((i+1)/len(coordinate_list)*100)
+    return TDlines
+```
 
+```python
+%%time
+TDlines = Three_dim_lines_reconst(key_list, coordinate_list)
+```
+
+```python
+# 以下
 ```
 
 ```python
@@ -1090,27 +1090,101 @@ def dot_P_frag(P, frag):
 ```
 
 ```python
-reprojection_dict = {}
-for tag in TDlines:
-    temp_reprojection_dict = {}
-    P_dict = excluded_Parray(tag[0])
-    for P_tag in P_dict:
-        P = P_dict[P_tag]
-        P_list = []
-        for i, frag in enumerate(TDlines[tag]):
-            frag = frag.reshape((-1,3))
-            frag = np.concatenate([frag, np.ones(len(frag)).reshape((len(frag), 1))],1) # 末尾に1を追加 (X, Y, Z, 1)
-            reprojection = dot_P_frag(P, frag)
-            P_list.append(reprojection)
-        temp_reprojection_dict[P_tag] = P_list
-    reprojection_dict[tag] = temp_reprojection_dict
+def get_reprojection_list(key_list, TDlines):
+    reprojection_list = []
+    reprojection_key = []
+    for j, tag in enumerate(key_list):
+        temp_reprojection_list = []
+        temp_reprojection_key = []
+        P_dict = excluded_Parray(tag[0])
+        for P_tag in P_dict:
+            P = P_dict[P_tag]
+            P_list = []
+            for i, frag in enumerate(TDlines[j]):
+                frag = frag.reshape((-1,3))
+                frag = np.concatenate([frag, np.ones(len(frag)).reshape((len(frag), 1))],1) # 末尾に1を追加 (X, Y, Z, 1)
+                reprojection = dot_P_frag(P, frag)
+                P_list.append(reprojection)
+            temp_reprojection_list.append(P_list)
+            temp_reprojection_key.append(P_tag)
+        reprojection_list.append(temp_reprojection_list)
+        reprojection_key.append(temp_reprojection_key)
+    return reprojection_list, reprojection_key
+```
+
+```python
+#reprojection_list = []
+#for j, tag in enumerate(key_list):
+#    temp_reprojection_list = []
+#    temp_reprojection_key = []
+#    P_dict = excluded_Parray(tag[0])
+#    for P_tag in P_dict:
+#        P = P_dict[P_tag]
+#        P_list = []
+#        for i, frag in enumerate(TDlines[j]):
+#            frag = frag.reshape((-1,3))
+#            frag = np.concatenate([frag, np.ones(len(frag)).reshape((len(frag), 1))],1) # 末尾に1を追加 (X, Y, Z, 1)
+#            reprojection = dot_P_frag(P, frag)
+#            P_list.append(reprojection)
+#        temp_reprojection_list.append(P_list)
+#        temp_reprojection_key.append(P_tag)
+#    reprojection_list.append(temp_reprojection_list)
+```
+
+```python
+#reprojection_dict = {}
+#for tag in TDlines:
+#    temp_reprojection_dict = {}
+#    P_dict = excluded_Parray(tag[0])
+#    for P_tag in P_dict:
+#        P = P_dict[P_tag]
+#        P_list = []
+#        for i, frag in enumerate(TDlines[tag]):
+#            frag = frag.reshape((-1,3))
+#            frag = np.concatenate([frag, np.ones(len(frag)).reshape((len(frag), 1))],1) # 末尾に1を追加 (X, Y, Z, 1)
+#            reprojection = dot_P_frag(P, frag)
+#            P_list.append(reprojection)
+#        temp_reprojection_dict[P_tag] = P_list
+#    reprojection_dict[tag] = temp_reprojection_dict
+```
+
+```python
+%%time
+reprojection_list, reprojection_key = get_reprojection_list(key_list, TDlines)
 ```
 
 ```python
 def connect_contour(contour_list):
-    con_list = []
     A = np.concatenate(contour_list).reshape((-1, 2))
     return A
+```
+
+```python
+def curve_contour_correspondence(dis):
+    contours_count_list = np.sum(np.where((dis<10),1,0),axis=0)
+    contours_count_list_idx = np.where(contours_count_list > 0)
+    _, gap_idx = np.where(np.diff(contours_count_list_idx)>10)
+
+    temp_list = []
+
+    if len(gap_idx) >= 1:
+        for i, idx in enumerate(gap_idx):
+            if i == 0:
+                temp_list.append(contours_count_list_idx[0][:idx+1])
+            else:
+                temp_list.append(contours_count_list_idx[0][gap_idx[i-1]+1:idx])
+
+        temp_list.append(contours_count_list_idx[0][idx+1:])
+        return temp_list
+    
+    else:
+        return contours_count_list_idx
+
+def ccc_for_list(dis_list):
+    temp_list = []
+    for dis in dis_list:
+        temp_list.append(curve_contour_correspondence(dis))
+    return temp_list
 ```
 
 ```python code_folding=[]
@@ -1118,7 +1192,8 @@ def cal_distance(repro_P, contour_P):
     contour_P = connect_contour(contour_P)
     distance_list = []
     for repro_frag in repro_P:
-        repro_frag_bro = np.array([np.broadcast_to(aa, (len(contour_P), 2)) for aa in repro_frag])
+        #repro_frag_bro = np.array([np.broadcast_to(aa, (len(contour_P), 2)) for aa in repro_frag])
+        repro_frag_bro = np.repeat(repro_frag, len(contour_P),axis=0).reshape((repro_frag.shape[0], len(contour_P), repro_frag.shape[1]))
         distance = (np.sum((contour_P - repro_frag_bro)**2,axis=2))**(1/2)
         distance_list.append(distance)
     return distance_list
@@ -1127,23 +1202,28 @@ def distance_check(distance_list):
     dist_check_list = []
     ac_list = []
     for frag in distance_list:
-        ac = np.array((np.min(frag,axis=1)) < 10,dtype=np.int64) # 条件:10 pixel以内
+        ac = np.array((np.min(frag,axis=1)) < 5,dtype=np.int64) # 条件:10 pixel以内
         dist_check_list.append(np.array(sum(ac)/len(ac)))
         ac_list.append(ac)
     return ac_list, dist_check_list
 
-def P_dict_check(repro_dict_taged):
+def P_dict_check(repro_dict_taged, repro_list_key):
     P_list = []
     P_ac_list = []
-    for P_tag in repro_dict_taged:
-        repro_P = repro_dict_taged[P_tag]
+    P_distance_list = []
+    P_ccc_list = []
+    for i, P_tag in enumerate(repro_list_key):
+        repro_P = repro_dict_taged[i]
         contour_P = cam_list[P_tag].contour_list
         distance_list = cal_distance(repro_P, contour_P)
+        ccc_list = ccc_for_list(distance_list)
         ac_list, dist_check_list = distance_check(distance_list)
         P_list.append(dist_check_list)
         P_ac_list.append(ac_list)
+        #P_distance_list.append(distance_list)
+        P_ccc_list.append(ccc_list)
     P_check = np.array(P_list)
-    return P_ac_list, P_check
+    return P_ccc_list, P_ac_list, P_check
 
 def P_check_integration(P_check):
     temp_list=[]
@@ -1152,7 +1232,7 @@ def P_check_integration(P_check):
         temp_list.append(temp)
     check_list = np.sum(np.array(temp_list),axis=0)
     return check_list
-#########################################
+
 def ac_list_integration(P_ac_list):
     inter_ac = []
     for j in range(len(P_ac_list[0])):
@@ -1161,75 +1241,125 @@ def ac_list_integration(P_ac_list):
             temp_array += img[j]
             inter_ac.append(temp_array)
     return inter_ac
-    
-def gen_support_dict(reprojection_dicte):
-    support_dict = {}
-    for i, tag in enumerate(reprojection_dict):
-        repro_dict_taged = reprojection_dict[tag]
-        P_ac_list, P_check = P_dict_check(repro_dict_taged)
+
+def gen_support_list(reprojection_list, reprojection_key):
+    support_list = []
+    cccs_list = []
+    for i in range(len(reprojection_list)):
+        repro_list_taged = reprojection_list[i]
+        repro_list_key = reprojection_key[i]
+        ccc_list, P_ac_list, P_check = P_dict_check(repro_list_taged, repro_list_key)
         check_list = P_check_integration(P_check)
         inter_ac = ac_list_integration(P_ac_list)
-        support_dict[tag] = (check_list, inter_ac)
-        print((i+1)/len(reprojection_dict)*100)
-    return support_dict
+        support_list.append((check_list, inter_ac))
+        cccs_list.append(ccc_list)
+        print((i+1)/len(reprojection_list)*100)
+    return support_list, cccs_list
+
+def wrapper_gen_support_list(args):
+    return gen_support_list(*args)
 ```
 
 ```python
-support_dict = gen_support_dict(reprojection_dict)
+%%time
+support_list, ccc_list = gen_support_list(reprojection_list, reprojection_key)
+#wrap = [[r_list, r_key] for r_list, r_key in zip(reprojection_list, reprojection_key)]
+#result = joblib.Parallel(n_jobs=-1)(joblib.delayed(wrapper_gen_support_list)(i) for i in wrap)
 ```
 
 ```python
-#pt_corr_graph_list[cam][key_order][curve_num][sub_cam]
-#correspondence_list[main_cam][key_order][curve_num]
+ccc = ccc_list
 ```
 
 ```python
-test_curve_idx = pt_corr_graph_list[0][0][200]
+def reject_outliers(data, m=2):
+    return data[abs(data - np.mean(data)) < m * np.std(data)]
 ```
 
 ```python
-key_order[0]
+def differential(curve, d=5, per=0):
+    diff = np.roll(curve, -d, axis=0) - np.roll(curve, d, axis=0)
+    if per == 0:
+        head_diff = np.roll(curve, -d, axis=0)[:5] - curve[:5]
+        back_diff = curve[-5:] - np.roll(curve, d, axis=0)[-5:]
+        diff[:5] = head_diff
+        diff[-5:] = back_diff
+    return diff[:,1]/diff[:,0]
+```
+
+ccc=[]
+for dis_cam_num in dis_list:
+    ccc2=[]
+    for dis_countorpart in dis_cam_num:
+        ccc3=[]
+        for dis_curve in dis_countorpart:
+            ccc3.append(curve_contour_correspondence(dis_curve))
+        ccc2.append(ccc3)
+    ccc.append(ccc2)
+
+```python
+for i in range(len(cam_list)):
+    temp_list=[]
+    for j in range(len(cam_list[i].contour_list)):
+        temp_list.append(differential(cam_list[i].contour_list[j].reshape((-1,2)), per=1))
+        cam_list[i].diff_list = np.concatenate(temp_list)
 ```
 
 ```python
-test_idx = correspondence_list[0][0][200]
+def get_sup_cam_num(key):
+    pre_support_cam_num = np.arange(len(cam_list))[key_list[key][0][0]!=np.arange(len(cam_list))]
+    support_cam_num = pre_support_cam_num[key_list[key][0][1]!=pre_support_cam_num]
+    return support_cam_num
 ```
 
 ```python
-test_idx
+def del_inf_nan(arr):
+    arr = arr[~np.isnan(arr)]
+    arr = arr[~np.isinf(arr)]
+    return arr
 ```
 
 ```python
-TD_02_curve = TDlines[((0, 2), 'F')][test_idx[0]]
-TD_214_curve = TDlines[((2, 14), 'F')][test_idx[1]]
+def get_contour_diff_ave(support_cam_num, contour_idx):
+    ave_list=[]
+    for i in contour_idx:
+        diff_list = reject_outliers(del_inf_nan(cam_list[support_cam_num].diff_list[i]))
+        ave_list.append(np.average(diff_list))
+    return np.array(ave_list)
 ```
 
 ```python
-pre_integrate_02 = TD_02_curve[test_curve_idx[0].astype(np.int16)]
-pre_integrate_214 = TD_214_curve[test_curve_idx[1].astype(np.int16)]
-```
-
-```python
-support_dict[((0,2),"F")][0]
-```
-
-```python
-sup_th = 12 # サポート数
+sup_th = 5 # サポート数
 curve_fragment = []
-for tag in TDlines:
-    #if tag[1] == "R":
-    #    continue
-    lines_list = TDlines[tag]
-    support_list, support_ac = support_dict[tag][0], support_dict[tag][1]
-    for frag, sup, sup_ac in zip(lines_list, support_list, support_ac):
+for key in range(len(key_list)):
+    lines_list = TDlines[key]
+    check_list, inter_ac = support_list[key][0], support_list[key][1]
+
+    for idx in range(len(lines_list)):
+        
+        frag = lines_list[idx]
+        sup = check_list[idx]
+        sup_ac = inter_ac[idx]
+        
         if sup > sup_th:
-            frag = np.reshape(frag,(-1, 3))
-            
-            # if jなら周辺の曲線を引っ張ってきて結合する，結合した曲線のacを-1にする
-            
-            frag = np.array([i for i,j in zip(frag, sup_ac >sup_th) if j])
-            
-            curve_fragment.append(frag)
+            support_cam_num_arr = get_sup_cam_num(key)
+            count = 0
+            for support_cam in np.arange(len(cam_list)-2):
+                contour_idx = ccc[key][support_cam][idx]
+                repro_diff = differential(reprojection_list[key][support_cam][idx])
+                repro_diff = reject_outliers(repro_diff)
+                repro_diff_ave = np.average(repro_diff)
+                support_cam_num = support_cam_num_arr[support_cam]
+                contour_diff_ave = get_contour_diff_ave(support_cam_num, contour_idx)
+                if len(contour_diff_ave) < 1:
+                    continue
+                ave_diff = contour_diff_ave - repro_diff_ave
+                if np.any(np.abs(ave_diff)<0.1) == True:
+                    count += 1
+            if count > 2:
+                frag = np.reshape(frag,(-1, 3))
+                frag = np.array([i for i,j in zip(frag, sup_ac >5) if j])
+                curve_fragment.append(frag)
 ```
 
 from scipy import interpolate
@@ -1325,7 +1455,7 @@ def plot_graph():
         try:
             if len(x)<2:
                 continue
-            tck, u = interpolate.splprep(data, k=3)
+            tck, u = interpolate.splprep(data, k=3, s=1)
             new = interpolate.splev(u, tck, der=0)
             ax.plot(new[0], new[2], new[1],"-",c="#9FC963")
         except ValueError:
@@ -1335,6 +1465,7 @@ def plot_graph():
         
         
         #ax.plot(x, z, y,"-")
+        
 %matplotlib notebook
 fig = plt.figure(figsize = (12, 12))
 fig.patch.set_alpha(0.)
@@ -1354,11 +1485,10 @@ plot_graph()
 ```
 
 ```python
-
-```
-
-```python
-
+import pickle
+with open("args.curves","wb") as f:
+    pickle.dump(curve_fragment, f)
+    
 ```
 
 ```python
