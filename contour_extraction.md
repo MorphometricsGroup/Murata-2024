@@ -80,7 +80,11 @@ class Camera:
 
 ```python
 # 曲線分割
+<<<<<<< HEAD
+def split_list(contour_length, max_frag_len=100, min_frag_len=40, min_overrap=15):
+=======
 def split_list(contour_length, max_frag_len=100, min_frag_len=40, min_overrap=10):
+>>>>>>> ff4dbaa0d4886f26aacaa5eb26ad45359121bd4c
     
     # 輪郭のフラグメントの位置を指定(最小40 pixl)
     if contour_length > max_frag_len:
@@ -408,10 +412,17 @@ def differential(angles):
         if np.isnan(angles[i]):
             continue
         if i == len(angles)-1:
+<<<<<<< HEAD
+            if np.sign(angles[i]-angles[i-1]) != np.sign(angles[0]-angles[i]) or abs(angles[0]-angles[i-1])/2 < 0.001:
+                del_idx.append(i)
+        else:
+            if np.sign(angles[i]-angles[i-1]) != np.sign(angles[i+1]-angles[i])or abs(angles[i+1]-angles[i-1])/2 < 0.001:
+=======
             if np.sign(angles[i]-angles[i-1]) != np.sign(angles[0]-angles[i]): #or abs(angles[0]-angles[i-1])/2 < 0.001:
                 del_idx.append(i)
         else:
             if np.sign(angles[i]-angles[i-1]) != np.sign(angles[i+1]-angles[i]):# or abs(angles[i+1]-angles[i-1])/2 < 0.001:
+>>>>>>> ff4dbaa0d4886f26aacaa5eb26ad45359121bd4c
                 del_idx.append(i)
     return del_idx
 
@@ -491,9 +502,15 @@ def trim_all_frag():
 ```python tags=[]
 # フラグメントのリストを作る
 for i in range(len(cam_list)):
+<<<<<<< HEAD
+    #im_del_list = all_D(epipole_angle(i, epipole_list, epipole_list_idx))# im_del_list[color][contour][del_idx]
+    #newCon = all_sep(cam_list[i].contour_list, im_del_list)# newCon[color][fragment][coordination]
+    cam_list[i].frag_list = all_fraged(cam_list[i].contour_list)#newCon)
+=======
     im_del_list = all_D(epipole_angle(i, epipole_list, epipole_list_idx))# im_del_list[color][contour][del_idx]
     newCon = all_sep(cam_list[i].contour_list, im_del_list)# newCon[color][fragment][coordination]
     cam_list[i].frag_list = all_fraged(newCon)
+>>>>>>> ff4dbaa0d4886f26aacaa5eb26ad45359121bd4c
 trim_all_frag()
 ```
 
@@ -511,7 +528,11 @@ trim_all_frag()
 ```
 
 ```python
+<<<<<<< HEAD
+cnum = 4
+=======
 cnum = 30
+>>>>>>> ff4dbaa0d4886f26aacaa5eb26ad45359121bd4c
 new_img = np.zeros((cam_list[0].img.shape[0],cam_list[0].img.shape[1]),dtype=np.bool8)
 
 for j in range(len(cam_list[cnum].frag_list)):
@@ -1329,7 +1350,11 @@ def get_contour_diff_ave(support_cam_num, contour_idx):
 ```
 
 ```python
+<<<<<<< HEAD
+sup_th = 2 # サポート数
+=======
 sup_th = 5 # サポート数
+>>>>>>> ff4dbaa0d4886f26aacaa5eb26ad45359121bd4c
 curve_fragment = []
 for key in range(len(key_list)):
     lines_list = TDlines[key]
@@ -1356,9 +1381,15 @@ for key in range(len(key_list)):
                 ave_diff = contour_diff_ave - repro_diff_ave
                 if np.any(np.abs(ave_diff)<0.1) == True:
                     count += 1
+<<<<<<< HEAD
+            if count > 0:
+                frag = np.reshape(frag,(-1, 3))
+                frag = np.array([i for i,j in zip(frag, sup_ac >3) if j])
+=======
             if count > 2:
                 frag = np.reshape(frag,(-1, 3))
                 frag = np.array([i for i,j in zip(frag, sup_ac >5) if j])
+>>>>>>> ff4dbaa0d4886f26aacaa5eb26ad45359121bd4c
                 curve_fragment.append(frag)
 ```
 
