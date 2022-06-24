@@ -1,9 +1,11 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
 import pathlib
 
 import numpy as np
+import cv2
 
 
 class Camera:
