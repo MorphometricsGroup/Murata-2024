@@ -216,3 +216,58 @@ def pair_and_key_gen(
     pair_list[((pair[0], pair[1]), "F")] = img_list1
     pair_list[((pair[0], pair[1]), "R")] = img_list2
     return pair_list
+
+
+def PL_coll(pair, pair_list, cam_list, cam_pairs_F=[]):
+    """線と点の衝突判定"""
+    F = cam_pairs_F[pair[0]]
+    if pair[1] == "F":
+        frags_para = epilines_para(
+            cam_list[pair[0][0]].frag_list, F
+        )  # frags_para[色][frag]
+        epi_cood_S, epi_cood_F = all_pa2co(frags_para)
+        camL_idx = pair[0][1]
+    elif pair[1] == "R":
+        frags_para = epilines_para(cam_list[pair[0][1]].frag_list, F.T)
+        epi_cood_S, epi_cood_F = all_pa2co(frags_para)
+        camL_idx = pair[0][0]
+
+    im_list = []
+    for pair_col, col_part, epi_S_col, epi_F_col in zip(
+        pair_list[pair], cam_list[camL_idx].frag_list, epi_cood_S, epi_cood_F
+    ):
+        col_list = []
+        for pair_frag, epi_S_frag, epi_F_frag in zip(pair_col, epi_S_col, epi_F_col):
+            f_list = []
+            for pair_frag_each in pair_frag:
+                pts = col_part[pair_frag_each]  # 対応するフラグメント
+                v1 = epi_F_frag - epi_S_frag
+                v1_n = (v1[:, 0] ** 2 + v1[:, 1] ** 2) ** (1 / 2)
+                v1_n = np.stack([v1_n, v1_n], axis=1)
+                v1 = v1 / v1_n
+
+                v1_bro = np.repeat(v1, len(pts), axis=0).reshape(
+                    (v1.shape[0], len(pts), v1.shape[1])
+                )
+                epi_cood_S_bro = np.repeat(epi_S_frag, len(pts), axis=0).reshape(
+                    (epi_S_frag.shape[0], len(pts), epi_S_frag.shape[1])
+                )
+
+                v2 = pts - epi_cood_S_bro
+                v2_n = (v2[:, :, 0] ** 2 + v2[:, :, 1] ** 2) ** (1 / 2)
+                v2_n = np.stack([v2_n, v2_n], axis=2)
+                v2 = v2 / v2_n
+                con_det = np.cross(v1_bro, v2)
+                f_list.append(np.where(np.abs(con_det) <= 0.001))
+            col_list.append(f_list)
+        im_list.append(col_list)
+
+    return im_list
+
+
+def coll_dict_gen(pair, pair_list=[], cam_list=[], cam_pairs_F=[]):
+    """点と線の衝突判定"""
+    coll_dict = {}
+    im_list = PL_coll(pair, pair_list, cam_list, cam_pairs_F=cam_pairs_F)
+    coll_dict[pair] = im_list
+    return coll_dict
