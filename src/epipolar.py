@@ -268,3 +268,57 @@ def coll_dict_gen(pair, pair_list=[], cam_list=[], cam_pairs_F=[]):
     im_list = PL_coll(pair, pair_list, cam_list, cam_pairs_F=cam_pairs_F)
     coll_dict[pair] = im_list
     return coll_dict
+
+
+def pt_pair(coll_list):
+    pool_i = []
+    pool_j = []
+    pre_i = None
+    pre_j = None
+    pt = 1
+    for i, j in zip(coll_list[0], coll_list[1]):
+        if i in pool_i:
+            if pt == 1:
+                continue
+            elif pt == 0:
+                if j not in pool_j:
+                    pool_i.pop()
+                    pool_j.pop()
+                    pool_i.append(i)
+                    pool_j.append(j)
+                else:
+                    continue
+
+        elif i not in pool_i:
+            if j in pool_j:
+                pt = 0
+            else:
+                pt = 1
+            pool_i.append(i)
+            pool_j.append(j)
+    return np.array([pool_i, pool_j])
+
+
+def FR_frags(dict_tag, cam_list=[]):
+    if dict_tag[1] == "F":
+        part = cam_list[dict_tag[0][0]].frag_list
+        counterpart = cam_list[dict_tag[0][1]].frag_list
+        return part, counterpart
+
+    elif dict_tag[1] == "R":
+        part = cam_list[dict_tag[0][1]].frag_list
+        counterpart = cam_list[dict_tag[0][0]].frag_list
+        return part, counterpart
+
+
+def FR_check(dict_tag, cam_list=[], cam_pairs_F=[]):
+    if dict_tag[1] == "F":
+        P1 = cam_list[dict_tag[0][0]].P
+        P2 = cam_list[dict_tag[0][1]].P
+        F = cam_pairs_F[dict_tag[0]]
+        return P1, P2, F
+    elif dict_tag[1] == "R":
+        P1 = cam_list[dict_tag[0][1]].P
+        P2 = cam_list[dict_tag[0][0]].P
+        F = cam_pairs_F[dict_tag[0]].T
+        return P1, P2, F
