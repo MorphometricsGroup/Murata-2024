@@ -126,11 +126,8 @@ def para2cood_S(para_list):
     return np.array([[0, -c / b] for a, b, c in para_list])
 
 
-def para2cood_F(para_list):
-    """
-    Todo: ハードコードされている数値のパラメータへの移行
-    """
-    return np.array([[1920, -(1920 * a + c) / b] for a, b, c in para_list])
+def para2cood_F(para_list, img_width=1920):
+    return np.array([[img_width, -(img_width * a + c) / b] for a, b, c in para_list])
 
 
 def all_pa2co(para_list):
@@ -175,7 +172,7 @@ def coll_det(t1, t2):
     return count_c  # surport_idx
 
 
-def make_piar_list(epi_cood_S, epi_cood_F, cood_S, cood_F):
+def make_pair_list(epi_cood_S, epi_cood_F, cood_S, cood_F):
     """
     Todo: typo? piar->pair
     """
@@ -207,11 +204,11 @@ def pair_and_key_gen(
 
     cood_S, cood_F = get_frag_cood(cam_list[pair[1]].frag_list)
     epi_cood_S, epi_cood_F = all_pa2co(frags_para12)
-    img_list1 = make_piar_list(epi_cood_S, epi_cood_F, cood_S, cood_F)
+    img_list1 = make_pair_list(epi_cood_S, epi_cood_F, cood_S, cood_F)
 
     cood_S, cood_F = get_frag_cood(cam_list[pair[0]].frag_list)
     epi_cood_S, epi_cood_F = all_pa2co(frags_para21)
-    img_list2 = make_piar_list(epi_cood_S, epi_cood_F, cood_S, cood_F)
+    img_list2 = make_pair_list(epi_cood_S, epi_cood_F, cood_S, cood_F)
 
     pair_list[((pair[0], pair[1]), "F")] = img_list1
     pair_list[((pair[0], pair[1]), "R")] = img_list2
