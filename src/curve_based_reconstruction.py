@@ -6,6 +6,31 @@ import numpy as np
 from base import normalization
 
 
+def FR_frags(dict_tag, cam_list=[]):
+    if dict_tag[1] == "F":
+        part = cam_list[dict_tag[0][0]].frag_list
+        counterpart = cam_list[dict_tag[0][1]].frag_list
+        return part, counterpart
+
+    elif dict_tag[1] == "R":
+        part = cam_list[dict_tag[0][1]].frag_list
+        counterpart = cam_list[dict_tag[0][0]].frag_list
+        return part, counterpart
+
+
+def FR_check(dict_tag, cam_list=[], cam_pairs_F=[]):
+    if dict_tag[1] == "F":
+        P1 = cam_list[dict_tag[0][0]].P
+        P2 = cam_list[dict_tag[0][1]].P
+        F = cam_pairs_F[dict_tag[0]]
+        return P1, P2, F
+    elif dict_tag[1] == "R":
+        P1 = cam_list[dict_tag[0][1]].P
+        P2 = cam_list[dict_tag[0][0]].P
+        F = cam_pairs_F[dict_tag[0]].T
+        return P1, P2, F
+
+
 def nom_F(F):
     """
     Todo: sum -> np.sumの方が良い？
@@ -14,6 +39,9 @@ def nom_F(F):
 
 
 def cover_mat(x1, y1, x2, y2):
+    """共分散行列
+    Todo: scipyでの置き換え
+    """
     return np.array(
         [
             [x1**2 + x2**2, x2 * y2, x2, x1 * y1, 0, 0, x1, 0, 0],

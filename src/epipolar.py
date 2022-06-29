@@ -5,27 +5,6 @@ import numpy as np
 import cv2
 
 
-def dim3_distance(vec1, vec2):
-    return sum((vec1 - vec2) ** 2)
-
-
-def camera_correspondence(cam_list):
-    vec_list = []
-    for i, cam in enumerate(cam_list):
-        cam_list[i].para_load()
-        vec_list.append(cam_list[i].cam_world_cood)
-
-    pair_list = []
-    for i, vec1 in enumerate(vec_list):
-        for j, vec2 in enumerate(vec_list):
-            if i == j or i > j:
-                continue
-            elif dim3_distance(vec1, vec2) < 2:
-                pair_list.append((i, j))
-
-    return pair_list
-
-
 def SS_mat(vec3):
     vec3 = np.squeeze(vec3)
     SS_mat = np.zeros((3, 3))
@@ -197,6 +176,21 @@ def pair_and_key_gen(
     cam_list=[],
     cam_pairs_F=[],
 ):
+    """
+    Parameters
+    ======================
+    pair: tuple of int
+        カメラのペアを指定するtuple
+
+    Returns
+    ======================
+    pair_list: dict, key: ( pair, 'F' or 'R') , val: ある画像中のfragmentsに対して，もう一方の画像で対応するfragmentsのindex
+        曲線のペアのリスト
+
+    Notes
+    =========================
+    'F'と'R': forward（i から j）, reverse（jからi）
+    """
     pair_list = {}
     F = cam_pairs_F[pair]
     frags_para12 = epilines_para(cam_list[pair[0]].frag_list, F)  # frags_para[色][frag]
@@ -210,8 +204,8 @@ def pair_and_key_gen(
     epi_cood_S, epi_cood_F = all_pa2co(frags_para21)
     img_list2 = make_pair_list(epi_cood_S, epi_cood_F, cood_S, cood_F)
 
-    pair_list[((pair[0], pair[1]), "F")] = img_list1
-    pair_list[((pair[0], pair[1]), "R")] = img_list2
+    pair_list[(pair, "F")] = img_list1
+    pair_list[(pair, "R")] = img_list2
     return pair_list
 
 
@@ -297,28 +291,3 @@ def pt_pair(coll_list):
             pool_i.append(i)
             pool_j.append(j)
     return np.array([pool_i, pool_j])
-
-
-def FR_frags(dict_tag, cam_list=[]):
-    if dict_tag[1] == "F":
-        part = cam_list[dict_tag[0][0]].frag_list
-        counterpart = cam_list[dict_tag[0][1]].frag_list
-        return part, counterpart
-
-    elif dict_tag[1] == "R":
-        part = cam_list[dict_tag[0][1]].frag_list
-        counterpart = cam_list[dict_tag[0][0]].frag_list
-        return part, counterpart
-
-
-def FR_check(dict_tag, cam_list=[], cam_pairs_F=[]):
-    if dict_tag[1] == "F":
-        P1 = cam_list[dict_tag[0][0]].P
-        P2 = cam_list[dict_tag[0][1]].P
-        F = cam_pairs_F[dict_tag[0]]
-        return P1, P2, F
-    elif dict_tag[1] == "R":
-        P1 = cam_list[dict_tag[0][1]].P
-        P2 = cam_list[dict_tag[0][0]].P
-        F = cam_pairs_F[dict_tag[0]].T
-        return P1, P2, F
