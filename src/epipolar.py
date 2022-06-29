@@ -5,27 +5,6 @@ import numpy as np
 import cv2
 
 
-def dim3_distance(vec1, vec2):
-    return sum((vec1 - vec2) ** 2)
-
-
-def camera_correspondence(cam_list):
-    vec_list = []
-    for i, cam in enumerate(cam_list):
-        cam_list[i].para_load()
-        vec_list.append(cam_list[i].cam_world_cood)
-
-    pair_list = []
-    for i, vec1 in enumerate(vec_list):
-        for j, vec2 in enumerate(vec_list):
-            if i == j or i > j:
-                continue
-            elif dim3_distance(vec1, vec2) < 2:
-                pair_list.append((i, j))
-
-    return pair_list
-
-
 def SS_mat(vec3):
     vec3 = np.squeeze(vec3)
     SS_mat = np.zeros((3, 3))
@@ -126,11 +105,8 @@ def para2cood_S(para_list):
     return np.array([[0, -c / b] for a, b, c in para_list])
 
 
-def para2cood_F(para_list):
-    """
-    Todo: ハードコードされている数値のパラメータへの移行
-    """
-    return np.array([[1920, -(1920 * a + c) / b] for a, b, c in para_list])
+def para2cood_F(para_list, img_width=1920):
+    return np.array([[img_width, -(img_width * a + c) / b] for a, b, c in para_list])
 
 
 def all_pa2co(para_list):
@@ -175,7 +151,7 @@ def coll_det(t1, t2):
     return count_c  # surport_idx
 
 
-def make_piar_list(epi_cood_S, epi_cood_F, cood_S, cood_F):
+def make_pair_list(epi_cood_S, epi_cood_F, cood_S, cood_F):
     """
     Todo: typo? piar->pair
     """
@@ -200,6 +176,21 @@ def pair_and_key_gen(
     cam_list=[],
     cam_pairs_F=[],
 ):
+    """
+    Parameters
+    ======================
+    pair: tuple of int
+        カメラのペアを指定するtuple
+
+    Returns
+    ======================
+    pair_list: dict, key: ( pair, 'F' or 'R') , val: ある画像中のfragmentsに対して，もう一方の画像で対応するfragmentsのindex
+        曲線のペアのリスト
+
+    Notes
+    =========================
+    'F'と'R': forward（i から j）, reverse（jからi）
+    """
     pair_list = {}
     F = cam_pairs_F[pair]
     frags_para12 = epilines_para(cam_list[pair[0]].frag_list, F)  # frags_para[色][frag]
@@ -207,14 +198,14 @@ def pair_and_key_gen(
 
     cood_S, cood_F = get_frag_cood(cam_list[pair[1]].frag_list)
     epi_cood_S, epi_cood_F = all_pa2co(frags_para12)
-    img_list1 = make_piar_list(epi_cood_S, epi_cood_F, cood_S, cood_F)
+    img_list1 = make_pair_list(epi_cood_S, epi_cood_F, cood_S, cood_F)
 
     cood_S, cood_F = get_frag_cood(cam_list[pair[0]].frag_list)
     epi_cood_S, epi_cood_F = all_pa2co(frags_para21)
-    img_list2 = make_piar_list(epi_cood_S, epi_cood_F, cood_S, cood_F)
+    img_list2 = make_pair_list(epi_cood_S, epi_cood_F, cood_S, cood_F)
 
-    pair_list[((pair[0], pair[1]), "F")] = img_list1
-    pair_list[((pair[0], pair[1]), "R")] = img_list2
+    pair_list[(pair, "F")] = img_list1
+    pair_list[(pair, "R")] = img_list2
     return pair_list
 
 
@@ -271,3 +262,32 @@ def coll_dict_gen(pair, pair_list=[], cam_list=[], cam_pairs_F=[]):
     im_list = PL_coll(pair, pair_list, cam_list, cam_pairs_F=cam_pairs_F)
     coll_dict[pair] = im_list
     return coll_dict
+
+
+def pt_pair(coll_list):
+    pool_i = []
+    pool_j = []
+    pre_i = None
+    pre_j = None
+    pt = 1
+    for i, j in zip(coll_list[0], coll_list[1]):
+        if i in pool_i:
+            if pt == 1:
+                continue
+            elif pt == 0:
+                if j not in pool_j:
+                    pool_i.pop()
+                    pool_j.pop()
+                    pool_i.append(i)
+                    pool_j.append(j)
+                else:
+                    continue
+
+        elif i not in pool_i:
+            if j in pool_j:
+                pt = 0
+            else:
+                pt = 1
+            pool_i.append(i)
+            pool_j.append(j)
+    return np.array([pool_i, pool_j])
