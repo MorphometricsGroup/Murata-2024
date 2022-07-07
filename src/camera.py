@@ -1,9 +1,11 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
 import pathlib
 
 import numpy as np
+import cv2
 
 
 class Camera:
@@ -72,3 +74,30 @@ class Camera:
         self.Rt = np.loadtxt(file_path, delimiter="\t")
         self.P = np.dot(self.A, self.Rt[0:3, 0:4])
         self.cam_world_cood = -np.dot(self.Rt[0:3, 0:3].T, self.Rt[0:3, 3])
+
+
+def dim3_distance(vec1, vec2):
+    """
+    Todo: 村田くんが新しい関数に置き換え
+    """
+    return sum((vec1 - vec2) ** 2)
+
+
+def camera_correspondence(cam_list):
+    """
+    Todo: 村田くんが新しい関数に置き換え
+    """
+    vec_list = []
+    for i, cam in enumerate(cam_list):
+        cam_list[i].para_load()
+        vec_list.append(cam_list[i].cam_world_cood)
+
+    pair_list = []
+    for i, vec1 in enumerate(vec_list):
+        for j, vec2 in enumerate(vec_list):
+            if i == j or i > j:
+                continue
+            elif dim3_distance(vec1, vec2) < 2:
+                pair_list.append((i, j))
+
+    return pair_list
