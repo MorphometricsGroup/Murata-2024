@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import pickle
 
 from base import normalization
 
@@ -58,12 +59,16 @@ def cover_mat(x1, y1, x2, y2):
 
 
 def min_dist(F, pt1, pt2):
-    """
+    """観測した対応点を，視線が交わるように最短に補正する
     Parameters
     ===================
     pt1が画像2上の点，pt2が画像1上の点
+    F: fundamental matrix
 
-    Todo: typo? -> thita
+    Returns
+    ========================
+    np.array((x1, y1)): 補正された画像2の点
+    np.array((x2, y2)): 補正された画像1の点
     """
     S0 = 10**10
     x1_ori = pt1[0]
@@ -80,7 +85,7 @@ def min_dist(F, pt1, pt2):
     y1_tilda = 0
     x2_tilda = 0
     y2_tilda = 0
-    thita = nom_F(F).flatten()
+    theta = nom_F(F).flatten()
     it = 0
     while True:
         V_eps = cover_mat(x1, y1, x2, y2)
@@ -99,24 +104,24 @@ def min_dist(F, pt1, pt2):
         )
 
         x1_y1_tilda = (
-            np.dot(eps_ast, thita)
+            np.dot(eps_ast, theta)
             * np.dot(
                 np.array(
-                    [[thita[0], thita[1], thita[2]], [thita[3], thita[4], thita[5]]]
+                    [[theta[0], theta[1], theta[2]], [theta[3], theta[4], theta[5]]]
                 ),
                 np.array([x2, y2, 1]),
             )
-            / np.dot(thita, np.dot(V_eps, thita))
+            / np.dot(theta, np.dot(V_eps, theta))
         )
         x2_y2_tilda = (
-            np.dot(eps_ast, thita)
+            np.dot(eps_ast, theta)
             * np.dot(
                 np.array(
-                    [[thita[0], thita[3], thita[6]], [thita[1], thita[4], thita[7]]]
+                    [[theta[0], theta[3], theta[6]], [theta[1], theta[4], theta[7]]]
                 ),
                 np.array([x1, y1, 1]),
             )
-            / np.dot(thita, np.dot(V_eps, thita))
+            / np.dot(theta, np.dot(V_eps, theta))
         )
 
         x1_tilda = x1_y1_tilda[0]
@@ -159,9 +164,17 @@ def Ps(P, pt):
 
 
 def tri(P1, P2, pt1, pt2):
-    # x = sympy.Symbol('x')
-    # y = sympy.Symbol('y')
-    # z = sympy.Symbol('z')
+    """三角測量
+    Parameters
+    ===================
+    P: perspective matrix
+    F: fundamental matrix
+    pt: correspondence points
+
+    Returns
+    ========================
+    result_pt: 3 vector
+    """
     a1, b1, c1, d1, e1, f1, g1, h1, i1, j1 = Ps(P1, pt1)
     a2, b2, c2, d2, e2, f2, g2, h2, i2, j2 = Ps(P2, pt2)
     T = np.array([[a1, b1, c1], [f1, g1, h1], [a2, b2, c2], [f2, g2, h2]])
@@ -172,6 +185,15 @@ def tri(P1, P2, pt1, pt2):
 
 
 def excluded_Parray(ex_tag, cam_list=[]):
+    """再投影時に必要のないPを除外したdictを作る
+    Parameters
+    ===================
+    ex_tag: list-like, camera_pair
+
+    Returns
+    ========================
+    P_dict: dict, key: camera_num ,val: P
+    """
     P_dict = {}
     for i, cam in enumerate(cam_list):
         if i in ex_tag:
@@ -181,12 +203,45 @@ def excluded_Parray(ex_tag, cam_list=[]):
 
 
 def dot_P_frag(P, frag):
+    """再投影の計算
+    Parameters
+    ===================
+    P: perspective matrix
+    frag: 3D fragment
+
+    Returns
+    ========================
+    np.array(repro_frag): 2D fragment
+    """
     repro_frag = []
     for pt in frag:
         repro_pt = np.dot(P, pt)
-        repro_pt = np.array(normalization(repro_pt))
+        repro_pt = np.array(normalization(repro_pt),dtype=np.float32)
         repro_frag.append(repro_pt)
     return np.array(repro_frag)
+
+
+def reprojection_gen(tag, cam_list=[]):
+    reprojection_dict = {}
+    temp_reprojection_dict = {}
+    P_dict = excluded_Parray(tag[0],cam_list=cam_list)
+    for P_tag in P_dict:
+        P = P_dict[P_tag]
+        P_list = []
+        with open(r"temp/{0}_{1}_{2}.TDlines".format(tag[0][0],tag[0][1],tag[1]), 'rb') as f:
+            TDlines_taged = pickle.load(f)
+        for col in TDlines_taged:
+            col_list = []
+            for i, frag in enumerate(col):
+                frag = frag.reshape((-1,3))
+                frag = np.concatenate([frag, np.ones(len(frag)).reshape((len(frag), 1))],1) # 末尾に1を追加 (X, Y, Z, 1)
+                reprojection = dot_P_frag(P, frag)
+                col_list.append(reprojection)
+            P_list.append(col_list)
+        temp_reprojection_dict[P_tag] = P_list
+    #reprojection_dict[tag] = temp_reprojection_dict
+    with open(r"temp/{0}_{1}_{2}.reprojection_dict".format(tag[0][0],tag[0][1],tag[1]),"wb") as f:
+        pickle.dump(temp_reprojection_dict, f)
 
 
 def connect_contour(contour_list):
@@ -270,6 +325,23 @@ def ac_list_integration(P_ac_list):
 
 
 def gen_support_dict(reprojection_dict, cam_list=[]):
+    """サポートの計算
+    Parameters
+    ===================
+    reprojection_dict: dict, 
+        key: tuple, camera_pair ((i,j),"F" or "R")
+        val: dict,
+            key: int, cam_num
+            val: list, fragments
+
+    Returns
+    ========================
+    support_dict: dict, 
+        key: tuple, camera_pair ((i,j),"F" or "R")
+        val: tuple, (check_list, inter_ac)
+            check_list[color][frag][support_num]: サポートの数を保存している
+            inter_ac[color][frag][coodinate][support_num]: フラグメント上のどこがサポートを受けているか保存している 
+    """
     support_dict = {}
     for tag in reprojection_dict:
         repro_dict_taged = reprojection_dict[tag]
@@ -278,3 +350,20 @@ def gen_support_dict(reprojection_dict, cam_list=[]):
         inter_ac = ac_list_integration(P_ac_list)
         support_dict[tag] = (check_list, inter_ac)
     return support_dict
+
+
+def gen_support(tag, cam_list=[]):
+    #if tag[1] == "R":
+    #    return
+    
+    with open(r"temp/{0}_{1}_{2}.reprojection_dict".format(tag[0][0],tag[0][1],tag[1]), 'rb') as f:
+        repro_dict_taged = pickle.load(f)
+    #repro_dict_taged = reprojection_dict[tag]
+    _, P_ac_list, P_check = P_dict_check(repro_dict_taged, cam_list=cam_list)
+    check_list = P_check_integration(P_check)
+    inter_ac = ac_list_integration(P_ac_list)
+    #support_dict[tag] = (check_list, inter_ac)
+    with open(r"temp/{0}_{1}_{2}.support_dict".format(tag[0][0],tag[0][1],tag[1]),"wb") as f:
+        pickle.dump((check_list, inter_ac), f)
+        
+    return #support_dict
