@@ -77,33 +77,6 @@ class Camera:
         self.cam_world_cood = -np.dot(self.Rt[0:3, 0:3].T, self.Rt[0:3, 3])
 
 
-def dim3_distance(vec1, vec2):
-    """
-    Todo: 村田くんが新しい関数に置き換え
-    """
-    return sum((vec1 - vec2) ** 2)
-
-
-def camera_correspondence(cam_list):
-    """
-    Todo: 村田くんが新しい関数に置き換え
-    """
-    vec_list = []
-    for i, cam in enumerate(cam_list):
-        cam_list[i].para_load()
-        vec_list.append(cam_list[i].cam_world_cood)
-
-    pair_list = []
-    for i, vec1 in enumerate(vec_list):
-        for j, vec2 in enumerate(vec_list):
-            if i == j or i > j:
-                continue
-            elif dim3_distance(vec1, vec2) < 2:
-                pair_list.append((i, j))
-
-    return pair_list
-
-
 def cood_to_mask(csv_path, im_shape):
     idx = np.loadtxt(str(csv_path), delimiter=",")
     idx = idx.astype(np.int64)
@@ -202,7 +175,19 @@ def cal_angle(cam_pos1, cam_pos2, cam_mean):
     return angle
 
 
-def cal_angle_all(cam_list, angle_upper=1 / 9 * np.pi):
+def camera_correspondence(cam_list, angle_upper=3 / 9 * np.pi):
+    """カメラの対応を返す
+    Parameters
+    ========================
+    cam_list: cameraのlist
+    angle_upper: エピポーラ角の上限（論文では20度）
+
+    Returns
+    ========================
+    pair_list: list of tuple (i,j), i, j: camera_number
+
+    """
+
     pair_list = []
     cam_mean = cam_pos_mean(cam_list)
     for i, cam1 in enumerate(cam_list):

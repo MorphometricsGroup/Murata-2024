@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 from base import normalization
-from camera import Camera, metashape_Camera, camera_correspondence, cal_angle_all
-from fragment import all_D, frag_list_fraged
+from camera import Camera, metashape_Camera, camera_correspondence
+from fragment import all_D, frag_list_fraged, all_sep
 from epipolar import (
     FF_mat,
     epipole_angle,
@@ -16,7 +16,7 @@ from curve_based_reconstruction import (
     FR_check,
     min_dist,
     tri,
-    excluded_Parray,
-    dot_P_frag,
+    reprojection_gen,
     gen_support_dict,
+    gen_support
 )

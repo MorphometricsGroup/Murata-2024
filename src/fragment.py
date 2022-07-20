@@ -89,6 +89,16 @@ def all_fraged(contours_list):
 
 
 def frag_list_fraged(frags_list):  # frags_list[色][輪郭][sep][座標]
+    """輪郭のリストからフラグメントのリストを作る
+    Parameters
+    ========================
+    frags_list: list[color][fragment][coordination]
+
+    Returns
+    ========================
+    img_frag_list: list[color][fragment][coordination]
+
+    """
     img_frag_list = []
     for frag in frags_list:
         color_frag = all_fraged(frag)
@@ -103,7 +113,7 @@ def gene(angles):
     return list(map(lambda y: (y - min(B)) / (max(B) - min(B)), B))
 
 
-def epipole_angle(img_num, epipole_dict):
+def epipole_angle(img_num, epipole_dict, cam_list):
     cam = cam_list[img_num]
     cam.img_load()
     cam.contour_extraction()
@@ -181,16 +191,28 @@ def differential(angles):
 
 def marge_del(epi_del_list):
     im_del_list = []
-    for i, col in enumerate(epi_del_list[0]):
+    for a in range(len(epi_del_list[0])):
         color_list = []
-        for j, con in enumerate(col):
-            color_list.append(list(set(epi_del_list[0][i][j] + epi_del_list[1][i][j])))
+        for b in range(len(epi_del_list[0][a])):
+            con_list = []
+            for i in range(len(epi_del_list)):
+                con_list += epi_del_list[i][a][b]
+            color_list.append(con_list)
         im_del_list.append(color_list)
     return im_del_list
 
 
 def all_D(angles_list):
-    # 画像1枚に対して削除リストを作成
+    """画像1枚に対して削除リストを作成
+    Parameters
+    ========================
+    angles_list: list[color][fragment][angle], エピポールと輪郭上のある点を結んだ時の角度
+
+    Returns
+    ========================
+    all_del_list: list[color][fragment][idx], エピポーラ線と平行な輪郭のidx
+
+    """
     all_del_list = []
     for epi in angles_list:
         epi_del_list = []
@@ -205,3 +227,30 @@ def all_D(angles_list):
         all_del_list.append(epi_del_list)
     all_del_list = marge_del(all_del_list)
     return all_del_list
+
+
+def separate(contour, del_idx):
+    # 一つの輪郭に対し削除リストから削除
+    start = 0
+    newArray = []
+    for d in del_idx:
+        if contour[start:d] != []:
+            if contour[start:d].size != 0:
+                newArray.append(contour[start:d])
+        start = d+1
+
+    if contour[start:].size != 0:
+        newArray.append(contour[start:])
+    return newArray
+
+
+def all_sep(con_list, del_list):
+    n_list = []
+    for col, del_col in zip(con_list, del_list):
+        n_col_list = []
+        for con, del_con in zip(col, del_col) :
+            n_con = separate(con, del_con)
+            for frag in n_con:
+                n_col_list.append(frag)
+        n_list.append(n_col_list)
+    return n_list

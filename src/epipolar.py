@@ -18,6 +18,19 @@ def SS_mat(vec3):
 
 
 def FF_mat(A1, A2, Rt1, Rt2):
+    """エピポールと基礎行列Fを返す
+    Parameters
+    ========================
+    A1, A2: 3*3 array, inner parameter
+    Rt1, Rt2: 3*4 array, external parameter
+
+    Returns
+    ========================
+    epipole1, epipole2: 3 array
+    F matrix: 3*3 array
+
+    """
+
     P1 = np.dot(A1, Rt1[0:3, 0:4])
     P2 = np.dot(A2, Rt2[0:3, 0:4])
     cam_pos1 = -np.dot(Rt1[0:3, 0:3].T, Rt1[0:3, 3])
@@ -49,8 +62,8 @@ def epipole_angle(img_num, epipole_dict, cam_list=[]):
 
     """
     cam = cam_list[img_num]
-    cam.img_load()
-    cam.contour_extraction()
+    #cam.img_load()
+    #cam.contour_extraction()
     angle_list = []
 
     for epi in epipole_dict[img_num]:
@@ -257,7 +270,18 @@ def PL_coll(pair, pair_list, cam_list, cam_pairs_F=[]):
 
 
 def coll_dict_gen(pair, pair_list=[], cam_list=[], cam_pairs_F=[]):
-    """点と線の衝突判定"""
+    """点と線の衝突判定
+    Parameters
+    ======================
+    pair: tuple of int
+        カメラのペアとF，Rを指定するtuple
+    
+    Returns
+    ======================
+    coll_dict: dict,    key:  ( pair, 'F' or 'R') , 
+                        val: カメラ1のある曲線上の指定された1点に対応する，カメラ2上のpair_listで指定された曲線上の複数のidx
+
+    """
     coll_dict = {}
     im_list = PL_coll(pair, pair_list, cam_list, cam_pairs_F=cam_pairs_F)
     coll_dict[pair] = im_list
@@ -265,6 +289,16 @@ def coll_dict_gen(pair, pair_list=[], cam_list=[], cam_pairs_F=[]):
 
 
 def pt_pair(coll_list):
+    """点と線の衝突判定
+    Parameters
+    ======================
+    coll_list: 
+
+    Returns
+    ======================
+    list, col_dictで取った候補を1点対1点で対応させる
+
+    """
     pool_i = []
     pool_j = []
     pre_i = None
