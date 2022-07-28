@@ -4,7 +4,7 @@
 import numpy as np
 
 
-def split_list(contour_length, max_frag_len=100, min_frag_len=40, min_overrap=20):
+def split_list(contour_length, max_frag_len=100, min_frag_len=40, min_overrap=15):
 
     # 輪郭のフラグメントの位置を指定(最小40 pixl)
     if contour_length > max_frag_len:
@@ -191,6 +191,9 @@ def differential(angles):
 
 def marge_del(epi_del_list):
     im_del_list = []
+    if epi_del_list == []:
+        return im_del_list
+    
     for a in range(len(epi_del_list[0])):
         color_list = []
         for b in range(len(epi_del_list[0][a])):

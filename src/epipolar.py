@@ -3,6 +3,8 @@
 
 import numpy as np
 import cv2
+import pickle
+import os
 
 
 def SS_mat(vec3):
@@ -213,16 +215,19 @@ def pair_and_key_gen(
     epi_cood_S, epi_cood_F = all_pa2co(frags_para12)
     img_list1 = make_pair_list(epi_cood_S, epi_cood_F, cood_S, cood_F)
 
-    cood_S, cood_F = get_frag_cood(cam_list[pair[0]].frag_list)
-    epi_cood_S, epi_cood_F = all_pa2co(frags_para21)
-    img_list2 = make_pair_list(epi_cood_S, epi_cood_F, cood_S, cood_F)
+    #cood_S, cood_F = get_frag_cood(cam_list[pair[0]].frag_list)
+    #epi_cood_S, epi_cood_F = all_pa2co(frags_para21)
+    #img_list2 = make_pair_list(epi_cood_S, epi_cood_F, cood_S, cood_F)
 
-    pair_list[(pair, "F")] = img_list1
-    pair_list[(pair, "R")] = img_list2
+    #pair_list[(pair, "F")] = img_list1
+    with open(r"temp/{0}_{1}_{2}.pair_list".format(pair[0], pair[1], "F"), "wb") as f:
+        pickle.dump(img_list1, f)
+    
+    #pair_list[(pair, "R")] = img_list2
     return pair_list
 
 
-def PL_coll(pair, pair_list, cam_list, cam_pairs_F=[]):
+def PL_coll(pair, pair_list_taged, cam_list, cam_pairs_F=[]):
     """線と点の衝突判定"""
     F = cam_pairs_F[pair[0]]
     if pair[1] == "F":
@@ -238,7 +243,7 @@ def PL_coll(pair, pair_list, cam_list, cam_pairs_F=[]):
 
     im_list = []
     for pair_col, col_part, epi_S_col, epi_F_col in zip(
-        pair_list[pair], cam_list[camL_idx].frag_list, epi_cood_S, epi_cood_F
+        pair_list_taged, cam_list[camL_idx].frag_list, epi_cood_S, epi_cood_F
     ):
         col_list = []
         for pair_frag, epi_S_frag, epi_F_frag in zip(pair_col, epi_S_col, epi_F_col):
@@ -269,7 +274,7 @@ def PL_coll(pair, pair_list, cam_list, cam_pairs_F=[]):
     return im_list
 
 
-def coll_dict_gen(pair, pair_list=[], cam_list=[], cam_pairs_F=[]):
+def coll_dict_gen(pair, cam_list=[], cam_pairs_F=[]):
     """点と線の衝突判定
     Parameters
     ======================
@@ -282,10 +287,15 @@ def coll_dict_gen(pair, pair_list=[], cam_list=[], cam_pairs_F=[]):
                         val: カメラ1のある曲線上の指定された1点に対応する，カメラ2上のpair_listで指定された曲線上の複数のidx
 
     """
-    coll_dict = {}
-    im_list = PL_coll(pair, pair_list, cam_list, cam_pairs_F=cam_pairs_F)
-    coll_dict[pair] = im_list
-    return coll_dict
+    #coll_dict = {}
+    with open(r"temp/{0}_{1}_{2}.pair_list".format(pair[0][0],pair[0][1],pair[1]), 'rb') as f:
+            pair_list_taged = pickle.load(f)
+    
+    im_list = PL_coll(pair, pair_list_taged, cam_list, cam_pairs_F=cam_pairs_F)
+    
+    #os.remove(r"temp/{0}_{1}_{2}.pair_list".format(pair[0][0],pair[0][1],pair[1]))
+    with open(r"temp/{0}_{1}_{2}.coll_dict".format(pair[0][0], pair[0][1], pair[1]), "wb") as f:
+        pickle.dump(im_list, f)
 
 
 def pt_pair(coll_list):
@@ -325,3 +335,26 @@ def pt_pair(coll_list):
             pool_i.append(i)
             pool_j.append(j)
     return np.array([pool_i, pool_j])
+
+
+def pair_pt_gen(tag):
+    im_list = []
+    with open(r"temp/{0}_{1}_{2}.coll_dict".format(tag[0][0],tag[0][1],tag[1]), 'rb') as f:
+        coll_dict_taged = pickle.load(f)
+    for col in coll_dict_taged:
+        col_list = []
+        for frag in col:
+            f_list = []
+            for each_frag in frag:
+                new_pair = pt_pair(each_frag)
+                f_list.append(new_pair)
+            col_list.append(f_list)
+        im_list.append(col_list)
+
+        #pair_pt[i] = im_list
+    os.remove(r"temp/{0}_{1}_{2}.coll_dict".format(tag[0][0], tag[0][1], tag[1]))
+
+    with open(r"temp/{0}_{1}_{2}.pair_pt".format(tag[0][0], tag[0][1], tag[1]), "wb") as f:
+        pickle.dump(im_list, f)
+
+

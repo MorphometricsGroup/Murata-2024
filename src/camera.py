@@ -104,14 +104,15 @@ class metashape_Camera:
         self.img = img  # 画像(ndarray)
         self.img_shape = img.shape
 
-    def contour_load(self, folder="GmJMC025_02_mask"):
+    def contour_load(self, folder="masks/annotation_mask"):
         folder_ = pathlib.Path(folder)
-        masks_path = folder_.glob(str(self.img_num) + "_" + "*" + ".csv")
+        masks_path = folder_.glob(str(self.img_num) + "_" + "*" + ".jpg")
 
         # mask_list = []
         contour_list = []
         for mask_path in masks_path:
-            mask = cood_to_mask(mask_path, (self.img_shape[0], self.img_shape[1]))
+            #mask = cood_to_mask(mask_path, (self.img_shape[0], self.img_shape[1]))
+            mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
             contours, hierarchy = cv2.findContours(
                 mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE
             )
@@ -175,7 +176,7 @@ def cal_angle(cam_pos1, cam_pos2, cam_mean):
     return angle
 
 
-def camera_correspondence(cam_list, angle_upper=3 / 9 * np.pi):
+def camera_correspondence(cam_list, angle_upper=1 / 9 * np.pi):
     """カメラの対応を返す
     Parameters
     ========================
