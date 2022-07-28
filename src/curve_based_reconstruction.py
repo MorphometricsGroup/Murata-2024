@@ -3,6 +3,7 @@
 
 import numpy as np
 import pickle
+import os
 
 from base import normalization
 
@@ -17,6 +18,33 @@ def FR_frags(dict_tag, cam_list=[]):
         part = cam_list[dict_tag[0][1]].frag_list
         counterpart = cam_list[dict_tag[0][0]].frag_list
         return part, counterpart
+
+
+# 座標でdictを作る
+def coordinate_dict_gen(tag, cam_list=[]):
+
+    pair_coordinate = []
+    part, counterpart = FR_frags(tag, cam_list)
+    
+    with open(r"temp/{0}_{1}_{2}.pair_list".format(tag[0][0],tag[0][1],tag[1]), 'rb') as f:
+        pair_list_taged = pickle.load(f)
+    
+    with open(r"temp/{0}_{1}_{2}.pair_pt".format(tag[0][0],tag[0][1],tag[1]), 'rb') as f:
+        pair_pt_taged = pickle.load(f)
+        
+    for part_col, cpart_col, pair_col, PtPair_col in zip(part, counterpart, pair_list_taged, pair_pt_taged):
+        col_list = []
+        for part_frag, pair, pt_idx in zip(part_col, pair_col, PtPair_col):
+            for each_pair, each_pt_idx in zip(pair, pt_idx):
+                if each_pt_idx[0].size != 0:
+                    col_list.append((np.array([part_frag[each_pt_idx[0]], cpart_col[each_pair][each_pt_idx[1]]])))
+        pair_coordinate.append(col_list)
+
+    os.remove(r"temp/{0}_{1}_{2}.pair_list".format(tag[0][0], tag[0][1], tag[1]))
+    os.remove(r"temp/{0}_{1}_{2}.pair_pt".format(tag[0][0], tag[0][1], tag[1]))
+    
+    with open(r"temp/{0}_{1}_{2}.coordinate_dict".format(tag[0][0], tag[0][1], tag[1]), "wb") as f:
+         pickle.dump(pair_coordinate, f)
 
 
 def FR_check(dict_tag, cam_list=[], cam_pairs_F=[]):
@@ -182,6 +210,36 @@ def tri(P1, P2, pt1, pt2):
     T_inv = np.linalg.pinv(T)
     result_pt = np.dot(T_inv, -p)
     return result_pt
+
+
+def TDlines_gen(tag, cam_list=[], cam_pairs_F=[]):
+
+    with open(r"temp/{0}_{1}_{2}.coordinate_dict".format(tag[0][0],tag[0][1],tag[1]), 'rb') as f:
+        pts = pickle.load(f)
+    
+    P1_ori, P2_ori, F_ori = FR_check(tag, cam_list=cam_list, cam_pairs_F=cam_pairs_F)
+    #pt, sep_list = connect_points(pts)
+    temp_TDlines = []
+    for pts_col in pts:
+        col_list = []
+        for pt in pts_col:
+            pt = np.transpose(pt, (1, 0, 2))
+            F = np.broadcast_to(F_ori, (pt.shape[0], 3, 3))
+            P1 = np.broadcast_to(P1_ori, (pt.shape[0], 3, 4))
+            P2 = np.broadcast_to(P2_ori, (pt.shape[0], 3, 4))
+            newcoords = np.array(
+                list(map(min_dist, F, pt[:, 1, :], pt[:, 0, :])))
+            tri_pt = np.array(
+                list(map(tri, P1, P2, newcoords[:, 1, :], newcoords[:, 0, :])))
+            #pts_array = sep_array(tri_pt, sep_list)
+            col_list.append(tri_pt)
+        temp_TDlines.append(col_list)
+
+    os.remove(r"temp/{0}_{1}_{2}.coordinate_dict".format(tag[0][0], tag[0][1], tag[1]))
+    with open(r"temp/{0}_{1}_{2}.TDlines".format(tag[0][0], tag[0][1], tag[1]), "wb") as f:
+        pickle.dump(temp_TDlines, f)
+    #TDlines[j] = temp_TDlines
+
 
 
 def excluded_Parray(ex_tag, cam_list=[]):
@@ -363,6 +421,7 @@ def gen_support(tag, cam_list=[]):
     check_list = P_check_integration(P_check)
     inter_ac = ac_list_integration(P_ac_list)
     #support_dict[tag] = (check_list, inter_ac)
+    os.remove(r"temp/{0}_{1}_{2}.reprojection_dict".format(tag[0][0],tag[0][1],tag[1]))
     with open(r"temp/{0}_{1}_{2}.support_dict".format(tag[0][0],tag[0][1],tag[1]),"wb") as f:
         pickle.dump((check_list, inter_ac), f)
         
