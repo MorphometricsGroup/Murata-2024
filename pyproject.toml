@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "curve_sketch"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+
+[tool.poetry.dependencies]
+python = ">= 3.8, < 3.12"
+numpy = "^1.23.1"
+scipy = "^1.9.0"
+matplotlib = "^3.5.2"
+opencv-python = "^4.6.0"
+tqdm = "^4.64.0"
+joblib = "^1.1.0"
+jupyter = "^1.0.0"
+jupyterlab = "^3.4.4"
+open3d = "0.15.1"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
