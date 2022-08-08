@@ -21,30 +21,50 @@ def FR_frags(dict_tag, cam_list=[]):
 
 
 # 座標でdictを作る
-def coordinate_dict_gen(tag, cam_list=[]):
+def coordinate_dict_gen(tag, cam_list=[], dest_dir="temp"):
 
     pair_coordinate = []
     part, counterpart = FR_frags(tag, cam_list)
-    
-    with open(r"temp/{0}_{1}_{2}.pair_list".format(tag[0][0],tag[0][1],tag[1]), 'rb') as f:
+
+    pair_list_file_path = os.path.join(
+        dest_dir, r"{0}_{1}_{2}.pair_list".format(tag[0][0], tag[0][1], tag[1])
+    )
+    with open(pair_list_file_path, "rb") as f:
         pair_list_taged = pickle.load(f)
-    
-    with open(r"temp/{0}_{1}_{2}.pair_pt".format(tag[0][0],tag[0][1],tag[1]), 'rb') as f:
+
+    pair_pt_file_path = os.path.join(
+        dest_dir, r"{0}_{1}_{2}.pair_pt".format(tag[0][0], tag[0][1], tag[1])
+    )
+    with open(pair_pt_file_path, "rb") as f:
         pair_pt_taged = pickle.load(f)
-        
-    for part_col, cpart_col, pair_col, PtPair_col in zip(part, counterpart, pair_list_taged, pair_pt_taged):
+
+    for part_col, cpart_col, pair_col, PtPair_col in zip(
+        part, counterpart, pair_list_taged, pair_pt_taged
+    ):
         col_list = []
         for part_frag, pair, pt_idx in zip(part_col, pair_col, PtPair_col):
             for each_pair, each_pt_idx in zip(pair, pt_idx):
                 if each_pt_idx[0].size != 0:
-                    col_list.append((np.array([part_frag[each_pt_idx[0]], cpart_col[each_pair][each_pt_idx[1]]])))
+                    col_list.append(
+                        (
+                            np.array(
+                                [
+                                    part_frag[each_pt_idx[0]],
+                                    cpart_col[each_pair][each_pt_idx[1]],
+                                ]
+                            )
+                        )
+                    )
         pair_coordinate.append(col_list)
 
-    os.remove(r"temp/{0}_{1}_{2}.pair_list".format(tag[0][0], tag[0][1], tag[1]))
-    os.remove(r"temp/{0}_{1}_{2}.pair_pt".format(tag[0][0], tag[0][1], tag[1]))
-    
-    with open(r"temp/{0}_{1}_{2}.coordinate_dict".format(tag[0][0], tag[0][1], tag[1]), "wb") as f:
-         pickle.dump(pair_coordinate, f)
+    os.remove(pair_list_file_path)
+    os.remove(pair_pt_file_path)
+
+    coordinate_dict_file_path = os.path.join(
+        dest_dir, r"{0}_{1}_{2}.coordinate_dict".format(tag[0][0], tag[0][1], tag[1])
+    )
+    with open(coordinate_dict_file_path, "wb") as f:
+        pickle.dump(pair_coordinate, f)
 
 
 def FR_check(dict_tag, cam_list=[], cam_pairs_F=[]):
@@ -212,13 +232,16 @@ def tri(P1, P2, pt1, pt2):
     return result_pt
 
 
-def TDlines_gen(tag, cam_list=[], cam_pairs_F=[]):
+def TDlines_gen(tag, cam_list=[], cam_pairs_F=[], src_dir="temp"):
 
-    with open(r"temp/{0}_{1}_{2}.coordinate_dict".format(tag[0][0],tag[0][1],tag[1]), 'rb') as f:
+    src_file_path = os.path.join(
+        src_dir, r"{0}_{1}_{2}.coordinate_dict".format(tag[0][0], tag[0][1], tag[1])
+    )
+    with open(src_file_path, "rb") as f:
         pts = pickle.load(f)
-    
+
     P1_ori, P2_ori, F_ori = FR_check(tag, cam_list=cam_list, cam_pairs_F=cam_pairs_F)
-    #pt, sep_list = connect_points(pts)
+    # pt, sep_list = connect_points(pts)
     temp_TDlines = []
     for pts_col in pts:
         col_list = []
@@ -227,19 +250,20 @@ def TDlines_gen(tag, cam_list=[], cam_pairs_F=[]):
             F = np.broadcast_to(F_ori, (pt.shape[0], 3, 3))
             P1 = np.broadcast_to(P1_ori, (pt.shape[0], 3, 4))
             P2 = np.broadcast_to(P2_ori, (pt.shape[0], 3, 4))
-            newcoords = np.array(
-                list(map(min_dist, F, pt[:, 1, :], pt[:, 0, :])))
+            newcoords = np.array(list(map(min_dist, F, pt[:, 1, :], pt[:, 0, :])))
             tri_pt = np.array(
-                list(map(tri, P1, P2, newcoords[:, 1, :], newcoords[:, 0, :])))
-            #pts_array = sep_array(tri_pt, sep_list)
+                list(map(tri, P1, P2, newcoords[:, 1, :], newcoords[:, 0, :]))
+            )
+            # pts_array = sep_array(tri_pt, sep_list)
             col_list.append(tri_pt)
         temp_TDlines.append(col_list)
 
     os.remove(r"temp/{0}_{1}_{2}.coordinate_dict".format(tag[0][0], tag[0][1], tag[1]))
-    with open(r"temp/{0}_{1}_{2}.TDlines".format(tag[0][0], tag[0][1], tag[1]), "wb") as f:
+    with open(
+        r"temp/{0}_{1}_{2}.TDlines".format(tag[0][0], tag[0][1], tag[1]), "wb"
+    ) as f:
         pickle.dump(temp_TDlines, f)
-    #TDlines[j] = temp_TDlines
-
+    # TDlines[j] = temp_TDlines
 
 
 def excluded_Parray(ex_tag, cam_list=[]):
@@ -274,31 +298,39 @@ def dot_P_frag(P, frag):
     repro_frag = []
     for pt in frag:
         repro_pt = np.dot(P, pt)
-        repro_pt = np.array(normalization(repro_pt),dtype=np.float32)
+        repro_pt = np.array(normalization(repro_pt), dtype=np.float32)
         repro_frag.append(repro_pt)
     return np.array(repro_frag)
 
 
-def reprojection_gen(tag, cam_list=[]):
+def reprojection_gen(tag, cam_list=[], tmp_dir="temp"):
     reprojection_dict = {}
     temp_reprojection_dict = {}
-    P_dict = excluded_Parray(tag[0],cam_list=cam_list)
+    P_dict = excluded_Parray(tag[0], cam_list=cam_list)
     for P_tag in P_dict:
         P = P_dict[P_tag]
         P_list = []
-        with open(r"temp/{0}_{1}_{2}.TDlines".format(tag[0][0],tag[0][1],tag[1]), 'rb') as f:
+        TDline_file_path = os.path.join(
+            tmp_dir, r"{0}_{1}_{2}.TDlines".format(tag[0][0], tag[0][1], tag[1])
+        )
+        with open(TDline_file_path, "rb") as f:
             TDlines_taged = pickle.load(f)
         for col in TDlines_taged:
             col_list = []
             for i, frag in enumerate(col):
-                frag = frag.reshape((-1,3))
-                frag = np.concatenate([frag, np.ones(len(frag)).reshape((len(frag), 1))],1) # 末尾に1を追加 (X, Y, Z, 1)
+                frag = frag.reshape((-1, 3))
+                frag = np.concatenate(
+                    [frag, np.ones(len(frag)).reshape((len(frag), 1))], 1
+                )  # 末尾に1を追加 (X, Y, Z, 1)
                 reprojection = dot_P_frag(P, frag)
                 col_list.append(reprojection)
             P_list.append(col_list)
         temp_reprojection_dict[P_tag] = P_list
-    #reprojection_dict[tag] = temp_reprojection_dict
-    with open(r"temp/{0}_{1}_{2}.reprojection_dict".format(tag[0][0],tag[0][1],tag[1]),"wb") as f:
+    # reprojection_dict[tag] = temp_reprojection_dict
+    reprojection_dict_file_path = os.path.join(
+        tmp_dir, r"{0}_{1}_{2}.reprojection_dict".format(tag[0][0], tag[0][1], tag[1])
+    )
+    with open(reprojection_dict_file_path, "wb") as f:
         pickle.dump(temp_reprojection_dict, f)
 
 
@@ -386,7 +418,7 @@ def gen_support_dict(reprojection_dict, cam_list=[]):
     """サポートの計算
     Parameters
     ===================
-    reprojection_dict: dict, 
+    reprojection_dict: dict,
         key: tuple, camera_pair ((i,j),"F" or "R")
         val: dict,
             key: int, cam_num
@@ -394,11 +426,11 @@ def gen_support_dict(reprojection_dict, cam_list=[]):
 
     Returns
     ========================
-    support_dict: dict, 
+    support_dict: dict,
         key: tuple, camera_pair ((i,j),"F" or "R")
         val: tuple, (check_list, inter_ac)
-            check_list[color][frag][support_num]: サポートの数を保存している
-            inter_ac[color][frag][coodinate][support_num]: フラグメント上のどこがサポートを受けているか保存している 
+        check_list[color][frag][support_num]: サポートの数を保存している
+        inter_ac[color][frag][coodinate][support_num]: フラグメント上のどこがサポートを受けているか保存している
     """
     support_dict = {}
     for tag in reprojection_dict:
@@ -411,18 +443,24 @@ def gen_support_dict(reprojection_dict, cam_list=[]):
 
 
 def gen_support(tag, cam_list=[]):
-    #if tag[1] == "R":
+    # if tag[1] == "R":
     #    return
-    
-    with open(r"temp/{0}_{1}_{2}.reprojection_dict".format(tag[0][0],tag[0][1],tag[1]), 'rb') as f:
+
+    with open(
+        r"temp/{0}_{1}_{2}.reprojection_dict".format(tag[0][0], tag[0][1], tag[1]), "rb"
+    ) as f:
         repro_dict_taged = pickle.load(f)
-    #repro_dict_taged = reprojection_dict[tag]
+    # repro_dict_taged = reprojection_dict[tag]
     _, P_ac_list, P_check = P_dict_check(repro_dict_taged, cam_list=cam_list)
     check_list = P_check_integration(P_check)
     inter_ac = ac_list_integration(P_ac_list)
-    #support_dict[tag] = (check_list, inter_ac)
-    os.remove(r"temp/{0}_{1}_{2}.reprojection_dict".format(tag[0][0],tag[0][1],tag[1]))
-    with open(r"temp/{0}_{1}_{2}.support_dict".format(tag[0][0],tag[0][1],tag[1]),"wb") as f:
+    # support_dict[tag] = (check_list, inter_ac)
+    os.remove(
+        r"temp/{0}_{1}_{2}.reprojection_dict".format(tag[0][0], tag[0][1], tag[1])
+    )
+    with open(
+        r"temp/{0}_{1}_{2}.support_dict".format(tag[0][0], tag[0][1], tag[1]), "wb"
+    ) as f:
         pickle.dump((check_list, inter_ac), f)
-        
-    return #support_dict
+
+    return  # support_dict
