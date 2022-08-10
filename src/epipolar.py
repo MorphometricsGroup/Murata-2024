@@ -207,6 +207,14 @@ def pair_and_key_gen(pair, cam_list=[], cam_pairs_F=[], dest_dir="temp"):
     Notes
     =========================
     'F'と'R': forward（i から j）, reverse（jからi）
+
+    X_Y_Z.pair_list: list of list of ndarray, of shape (n_labels, n_fragments_cam1, n_fragment_ids_cam2)
+        X: cam1のid
+        Y: cam2のid
+        Z: F or R
+        n_labels: ラベルの数
+        n_fragments_cam1: cam1内にあるfragmentsの数
+        n_fragment_ids_cam2: cam1内のあるfragmentに対応するcam2内のfragmentのidの数
     """
     pair_list = {}
     F = cam_pairs_F[pair]
@@ -293,6 +301,17 @@ def coll_dict_gen(pair, cam_list=[], cam_pairs_F=[]):
     coll_dict: dict,    key:  ( pair, 'F' or 'R') ,
                         val: カメラ1のある曲線上の指定された1点に対応する，カメラ2上のpair_listで指定された曲線上の複数のidx
 
+    X_Y_Z.coll_dict: list of list of list of tuple of ndarray, of shape (n_labels, n_fragments_cam1, n_fragments_cam2, 2,n_pixel_ids_of_fragment_cam2)
+        X: cam1のid
+        Y: cam2のid
+        Z: F or R
+        n_labels: ラベルの数
+        n_fragments_cam1: cam1内にあるfragmentsの数
+        n_fragments_cam2: cam1内のあるfragmentに対応するcam2内のfragmentの数
+        n_pixel_ids_of_fragment: cam1,cam2のfragmentの交わる画素idの数
+
+        tuple: cam1側の画素id，cam2側の画素id
+
     """
     # coll_dict = {}
     with open(
@@ -349,6 +368,25 @@ def pt_pair(coll_list):
 
 
 def pair_pt_gen(tag):
+    """_summary_
+
+    Parameters
+    ----------
+    tag : _type_
+        _description_
+
+    X_Y_Z.pair_pt: list of list of list of tuple of ndarray, of shape (n_labels, n_fragments_cam1, n_fragments_cam2, 2,n_pixel_ids_of_fragment_cam2)
+        X: cam1のid
+        Y: cam2のid
+        Z: F or R
+        n_labels: ラベルの数
+        n_fragments_cam1: cam1内にあるfragmentsの数
+        n_fragments_cam2: cam1内のあるfragmentに対応するcam2内のfragmentの数
+        n_pixel_ids_of_fragment: cam1,cam2のfragmentの交わる画素idの数
+
+        coll_dictから交差を除去したもの
+
+    """
     im_list = []
     with open(
         r"temp/{0}_{1}_{2}.coll_dict".format(tag[0][0], tag[0][1], tag[1]), "rb"

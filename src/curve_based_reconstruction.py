@@ -22,6 +22,30 @@ def FR_frags(dict_tag, cam_list=[]):
 
 # 座標でdictを作る
 def coordinate_dict_gen(tag, cam_list=[], dest_dir="temp"):
+    """_summary_
+
+    Parameters
+    ----------
+    tag : _type_
+        _description_
+    cam_list : list, optional
+        _description_, by default []
+    dest_dir : str, optional
+        _description_, by default "temp"
+
+    X_Y_Z.coordinate_dict: list of list, of shape (n_labels, n_pairs), of ndarray, of shape (n_cams, n_intersections, n_dim)
+        X: cam1のid
+        Y: cam2のid
+        Z: F or R
+        n_labels: ラベルの数
+        n_pairs: ペアの数（画像間で最大10個まで）
+        n_cams: cam1とcam2
+        n_intersections: cam1からエピポーラ線とcam2のfragmentの交点の数
+        n_dim: 画像の次元, 画素のi,j座標
+
+        TODO: 画像id, fragment id, 画素idで座標値を指定できるリストかndarrayとして扱う
+
+    """
 
     pair_coordinate = []
     part, counterpart = FR_frags(tag, cam_list)
@@ -270,14 +294,14 @@ def excluded_Parray(ex_tag, cam_list=[]):
     """再投影時に必要のないPを除外したdictを作る
     Parameters
     ===================
-    ex_tag: list-like, camera_pair
+    ex_tag: tuple of shape (2)
+        tuple of camera_pair
 
     Returns
     ========================
     P_dict: dict
         key: camera_num
         val: P
-    TODO: ex_tagの構造
     """
     P_dict = {}
     for i, cam in enumerate(cam_list):
@@ -292,14 +316,14 @@ def dot_P_frag(P, frag):
     Parameters
     ===================
     P: perspective matrix
-    frag: X of shape ()
-        3D fragment
+    frag: ndarray of shape (n_intersections, 3)
+        3D fragmentの配列（交点座標を持つ）
 
     Returns
     ========================
     np.array(repro_frag): 2D fragment
 
-    TODO: fragのデータ構造，shape, vectorize
+    TODO: vectorize
     """
     repro_frag = []
     for pt in frag:
@@ -311,7 +335,37 @@ def dot_P_frag(P, frag):
 
 def reprojection_gen(tag, cam_list=[], tmp_dir="temp"):
     """
-    TODO: TDlinesの構造，tagの構造
+    Parameters
+    ===================
+    tag: tuple of shape (2)
+        val1: tuple of shape (2)
+            tuple of camera_pair
+        val2: str
+            F or R
+
+    X_Y_Z.TDlines: list of list, of shape (n_labels, n_pairs), of ndarray, of shape (n_intersections, n_dim, 1)
+        X: cam1のid
+        Y: cam2のid
+        Z: F or R
+        n_labels: ラベルの数
+        n_pairs: ペアの数（画像間で最大10個まで）
+        n_intersections: cam1からエピポーラ線とcam2のfragmentの交点の数
+        n_dim: 3
+            3次元空間中の座標のx,y,z座標
+
+    X_Y_Z.reprojection_dict: dict
+        X: cam1のid
+        Y: cam2のid
+        Z: F or R
+        key: 再投影したカメラid
+        val: list of list of list of shape (n_labels, n_fragments_3d) of ndarray, of shape(n_intersections, n_dim)
+            n_labels: ラベルの数
+            n_fragments_3d: 3次元空間中でのfragment（ペアの数に等しい）
+
+            投影先の画像内での座標値
+
+
+
     """
     reprojection_dict = {}
     temp_reprojection_dict = {}
@@ -355,21 +409,23 @@ def connect_contour(contour_list):
 
 
 def cal_distance(repro_P, contour_P):
-    """_summary_
+    """再投影したfragmentと再投影先の輪郭間の距離を計算
 
     Parameters
     ----------
-    repro_P : _type_
-        _description_
-    contour_P : _type_
-        _description_
+    repro_P : list of list of shape (n_labels, n_fragmets_3d/n_pairs) of ndarray of shape (n_pixels_repro, 2)
+        3D fragmentの再投影先での座標
+
+    contour_P : list of list of shape (n_labels, n_contours) of ndarray of shape (n_pixels, 2)
+        再投影先の輪郭情報をもつ
+        n_contours: ある画像中の輪郭の数
+
+        輪郭の座標値
 
     Returns
     -------
     _type_
         _description_
-
-    TODO: contour_Pの構造，repro_Pの構造
     """
     contour_P = connect_contour(contour_P)
     distance_list = []
@@ -390,7 +446,7 @@ def distance_check(distance_list):
 
     Parameters
     ----------
-    distance_list : _type_
+    distance_list : list of list of shape (n_labels, n_pairs, )
         _description_
 
     Returns
@@ -429,7 +485,9 @@ def P_dict_check(repro_dict_taged, cam_list=[]):
     _type_
         _description_
 
-    TODO: docstring, repro_dict_tagedの構造
+    repro_dict_taged: reprojection_dictと同じ構造
+
+    TODO: docstring
     """
     P_list = []
     P_ac_list = []
@@ -449,14 +507,17 @@ def P_check_integration(P_check):
 
     Parameters
     ----------
-    P_check : _type_
-        _description_
+    P_check : list of list of list of shape (n_cameras, n_labels, n_fragments_3d/n_pairs)
+        n_cameras: 再投影先のカメラの数（全体からペアを除いたもの）
+
+        曲線中でサポートを受けている割合（サポートを受けた交点の数/n_intersections)
 
     Returns
     -------
-    _type_
-        _description_
-    TODO: docstring, P_checkの構造, check_listの構造,閾値の引数化
+    check_list: list of list of shape (n_labels, n_fragments_3d/n_pairs)
+        サポートの割合に対して閾値以上の再投影先の個数
+
+    TODO: docstring, 閾値の引数化
     """
     check_list = []
     for col in range(P_check.shape[1]):
@@ -470,19 +531,21 @@ def P_check_integration(P_check):
 
 
 def ac_list_integration(P_ac_list):
-    """_summary_
+    """交点毎のサポート
 
     Parameters
     ----------
-    P_ac_list : _type_
-        _description_
+    P_ac_list : list of list of list of shape (n_cameras, n_labels, n_fragments_3d/n_pairs, n_intersections) of bool
+        n_cameras: 再投影先のカメラの数（全体からペアを除いたもの）
+
+        交点毎でサポートを受けているかどうか
 
     Returns
     -------
-    inter_ac: _type_
-        _description_
+    inter_ac: list of list of shape (n_labels, n_fragments_3d/n_pairs, n_intersections)
+        サポートを受けた回数
 
-    TODO: docstring，P_ac_listの構造，inter_acの構造
+    TODO: docstring
     """
     inter_ac = []
     for i, col in enumerate(P_ac_list[0]):
@@ -525,6 +588,31 @@ def gen_support_dict(reprojection_dict, cam_list=[]):
 
 
 def gen_support(tag, cam_list=[]):
+    """_summary_
+
+    Parameters
+    ----------
+    tag : _type_
+        _description_
+    cam_list : list, optional
+        _description_, by default []
+
+    Returns
+    -------
+    _type_
+        _description_
+
+    X_Y_Z.support_dict: tuple of shape (2, )
+        X: cam1のid
+        Y: cam2のid
+        Z: F or R
+        tupleの各要素
+            val1: list of shape (n_labels) of ndarray of shape (n_pairs, )
+                あるペアのサポートの数
+            val2: list of list of shape (n_label, n_pairs) of ndarray of shape (n_intersections)
+                ある交点がサポートを受けた数
+
+    """
     # if tag[1] == "R":
     #    return
 
