@@ -41,10 +41,15 @@ def FF_mat(A1, A2, Rt1, Rt2):
     cam_pos2 = -np.dot(Rt2[0:3, 0:3].T, Rt2[0:3, 3])
     cam_pos2 = np.array([cam_pos2[0], cam_pos2[1], cam_pos2[2], 1])
     epipole1 = np.dot(P1, cam_pos2)
-    return epipole1, epipole2, np.dot(SS_mat(epipole2), np.dot(P2, np.linalg.pinv(P1)))
+
+    Fmat = np.dot(SS_mat(epipole2), np.dot(P2, np.linalg.pinv(P1)))
+    return epipole1, epipole2, Fmat
 
 
 def gene(angles):
+    """
+    TODO: fragmentと重複している
+    """
     # 正規化
     B = list(map(lambda y: y - min(angles), angles))
     return list(map(lambda y: (y - min(B)) / (max(B) - min(B)), B))
@@ -190,7 +195,7 @@ def pair_and_key_gen(pair, cam_list=[], cam_pairs_F=[], dest_dir="temp"):
     """
     Parameters
     ======================
-    pair: tuple of int
+    pair: tuple of int, of shape (2, )
         カメラのペアを指定するtuple
 
     Returns

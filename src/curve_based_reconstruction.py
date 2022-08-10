@@ -289,11 +289,14 @@ def dot_P_frag(P, frag):
     Parameters
     ===================
     P: perspective matrix
-    frag: 3D fragment
+    frag: X of shape ()
+        3D fragment
 
     Returns
     ========================
     np.array(repro_frag): 2D fragment
+
+    TODO: fragのデータ構造，shape, vectorize
     """
     repro_frag = []
     for pt in frag:
@@ -304,6 +307,9 @@ def dot_P_frag(P, frag):
 
 
 def reprojection_gen(tag, cam_list=[], tmp_dir="temp"):
+    """
+    TODO: TDlinesの構造，
+    """
     reprojection_dict = {}
     temp_reprojection_dict = {}
     P_dict = excluded_Parray(tag[0], cam_list=cam_list)
