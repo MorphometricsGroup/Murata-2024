@@ -274,7 +274,10 @@ def excluded_Parray(ex_tag, cam_list=[]):
 
     Returns
     ========================
-    P_dict: dict, key: camera_num ,val: P
+    P_dict: dict
+        key: camera_num
+        val: P
+    TODO: ex_tagの構造
     """
     P_dict = {}
     for i, cam in enumerate(cam_list):
@@ -308,7 +311,7 @@ def dot_P_frag(P, frag):
 
 def reprojection_gen(tag, cam_list=[], tmp_dir="temp"):
     """
-    TODO: TDlinesの構造，
+    TODO: TDlinesの構造，tagの構造
     """
     reprojection_dict = {}
     temp_reprojection_dict = {}
@@ -352,6 +355,22 @@ def connect_contour(contour_list):
 
 
 def cal_distance(repro_P, contour_P):
+    """_summary_
+
+    Parameters
+    ----------
+    repro_P : _type_
+        _description_
+    contour_P : _type_
+        _description_
+
+    Returns
+    -------
+    _type_
+        _description_
+
+    TODO: contour_Pの構造，repro_Pの構造
+    """
     contour_P = connect_contour(contour_P)
     distance_list = []
     for repro_col, con_col in zip(repro_P, contour_P):
@@ -367,6 +386,20 @@ def cal_distance(repro_P, contour_P):
 
 
 def distance_check(distance_list):
+    """_summary_
+
+    Parameters
+    ----------
+    distance_list : _type_
+        _description_
+
+    Returns
+    -------
+    _type_
+        _description_
+
+    TODO: distance_listの構造, 条件の引数化
+    """
     dist_check_list = []
     ac_list = []
     for col in distance_list:
@@ -382,6 +415,22 @@ def distance_check(distance_list):
 
 
 def P_dict_check(repro_dict_taged, cam_list=[]):
+    """_summary_
+
+    Parameters
+    ----------
+    repro_dict_taged : _type_
+        _description_
+    cam_list : list, optional
+        _description_, by default []
+
+    Returns
+    -------
+    _type_
+        _description_
+
+    TODO: docstring, repro_dict_tagedの構造
+    """
     P_list = []
     P_ac_list = []
     for P_tag in repro_dict_taged:
@@ -396,6 +445,19 @@ def P_dict_check(repro_dict_taged, cam_list=[]):
 
 
 def P_check_integration(P_check):
+    """_summary_
+
+    Parameters
+    ----------
+    P_check : _type_
+        _description_
+
+    Returns
+    -------
+    _type_
+        _description_
+    TODO: docstring, P_checkの構造, check_listの構造,閾値の引数化
+    """
     check_list = []
     for col in range(P_check.shape[1]):
         temp_list = []
@@ -408,6 +470,20 @@ def P_check_integration(P_check):
 
 
 def ac_list_integration(P_ac_list):
+    """_summary_
+
+    Parameters
+    ----------
+    P_ac_list : _type_
+        _description_
+
+    Returns
+    -------
+    inter_ac: _type_
+        _description_
+
+    TODO: docstring，P_ac_listの構造，inter_acの構造
+    """
     inter_ac = []
     for i, col in enumerate(P_ac_list[0]):
         col_list = []
