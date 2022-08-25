@@ -108,6 +108,9 @@ def frag_list_fraged(frags_list):  # frags_list[色][輪郭][sep][座標]
 
 # エピポールと輪郭上の点を結んだ直線と，x軸のなす角
 def gene(angles):
+    """
+    TODO: epopolarと重複している
+    """
     # 正規化
     B = list(map(lambda y: y - min(angles), angles))
     return list(map(lambda y: (y - min(B)) / (max(B) - min(B)), B))
@@ -193,7 +196,7 @@ def marge_del(epi_del_list):
     im_del_list = []
     if epi_del_list == []:
         return im_del_list
-    
+
     for a in range(len(epi_del_list[0])):
         color_list = []
         for b in range(len(epi_del_list[0][a])):
@@ -240,7 +243,7 @@ def separate(contour, del_idx):
         if contour[start:d] != []:
             if contour[start:d].size != 0:
                 newArray.append(contour[start:d])
-        start = d+1
+        start = d + 1
 
     if contour[start:].size != 0:
         newArray.append(contour[start:])
@@ -251,7 +254,7 @@ def all_sep(con_list, del_list):
     n_list = []
     for col, del_col in zip(con_list, del_list):
         n_col_list = []
-        for con, del_con in zip(col, del_col) :
+        for con, del_con in zip(col, del_col):
             n_con = separate(con, del_con)
             for frag in n_con:
                 n_col_list.append(frag)

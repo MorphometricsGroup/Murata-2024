@@ -41,10 +41,15 @@ def FF_mat(A1, A2, Rt1, Rt2):
     cam_pos2 = -np.dot(Rt2[0:3, 0:3].T, Rt2[0:3, 3])
     cam_pos2 = np.array([cam_pos2[0], cam_pos2[1], cam_pos2[2], 1])
     epipole1 = np.dot(P1, cam_pos2)
-    return epipole1, epipole2, np.dot(SS_mat(epipole2), np.dot(P2, np.linalg.pinv(P1)))
+
+    Fmat = np.dot(SS_mat(epipole2), np.dot(P2, np.linalg.pinv(P1)))
+    return epipole1, epipole2, Fmat
 
 
 def gene(angles):
+    """
+    TODO: fragmentと重複している
+    """
     # 正規化
     B = list(map(lambda y: y - min(angles), angles))
     return list(map(lambda y: (y - min(B)) / (max(B) - min(B)), B))
@@ -64,8 +69,8 @@ def epipole_angle(img_num, epipole_dict, cam_list=[]):
 
     """
     cam = cam_list[img_num]
-    #cam.img_load()
-    #cam.contour_extraction()
+    # cam.img_load()
+    # cam.contour_extraction()
     angle_list = []
 
     for epi in epipole_dict[img_num]:
@@ -186,25 +191,30 @@ def make_pair_list(epi_cood_S, epi_cood_F, cood_S, cood_F):
     return img_list
 
 
-def pair_and_key_gen(
-    pair,
-    cam_list=[],
-    cam_pairs_F=[],
-):
+def pair_and_key_gen(pair, cam_list=[], cam_pairs_F=[], dest_dir="temp"):
     """
     Parameters
     ======================
-    pair: tuple of int
+    pair: tuple of int, of shape (2, )
         カメラのペアを指定するtuple
 
     Returns
     ======================
-    pair_list: dict, key: ( pair, 'F' or 'R') , val: ある画像中のfragmentsに対して，もう一方の画像で対応するfragmentsのindex
+    pair_list: dict, key: ( pair, 'F' or 'R') , val:
         曲線のペアのリスト
+        ある画像中のfragmentsに対して，もう一方の画像で対応するfragmentsのindex
 
     Notes
     =========================
     'F'と'R': forward（i から j）, reverse（jからi）
+
+    X_Y_Z.pair_list: list of list of ndarray, of shape (n_labels, n_fragments_cam1, n_fragment_ids_cam2)
+        X: cam1のid
+        Y: cam2のid
+        Z: F or R
+        n_labels: ラベルの数
+        n_fragments_cam1: cam1内にあるfragmentsの数
+        n_fragment_ids_cam2: cam1内のあるfragmentに対応するcam2内のfragmentのidの数
     """
     pair_list = {}
     F = cam_pairs_F[pair]
@@ -215,15 +225,20 @@ def pair_and_key_gen(
     epi_cood_S, epi_cood_F = all_pa2co(frags_para12)
     img_list1 = make_pair_list(epi_cood_S, epi_cood_F, cood_S, cood_F)
 
-    #cood_S, cood_F = get_frag_cood(cam_list[pair[0]].frag_list)
-    #epi_cood_S, epi_cood_F = all_pa2co(frags_para21)
-    #img_list2 = make_pair_list(epi_cood_S, epi_cood_F, cood_S, cood_F)
+    # cood_S, cood_F = get_frag_cood(cam_list[pair[0]].frag_list)
+    # epi_cood_S, epi_cood_F = all_pa2co(frags_para21)
+    # img_list2 = make_pair_list(epi_cood_S, epi_cood_F, cood_S, cood_F)
 
-    #pair_list[(pair, "F")] = img_list1
-    with open(r"temp/{0}_{1}_{2}.pair_list".format(pair[0], pair[1], "F"), "wb") as f:
+    # pair_list[(pair, "F")] = img_list1
+    if not os.path.exists(dest_dir):
+        os.makedirs(dest_dir)
+    dest_file_path = os.path.join(
+        dest_dir, r"{0}_{1}_{2}.pair_list".format(pair[0], pair[1], "F")
+    )
+    with open(dest_file_path, "wb") as f:
         pickle.dump(img_list1, f)
-    
-    #pair_list[(pair, "R")] = img_list2
+
+    # pair_list[(pair, "R")] = img_list2
     return pair_list
 
 
@@ -280,21 +295,36 @@ def coll_dict_gen(pair, cam_list=[], cam_pairs_F=[]):
     ======================
     pair: tuple of int
         カメラのペアとF，Rを指定するtuple
-    
+
     Returns
     ======================
-    coll_dict: dict,    key:  ( pair, 'F' or 'R') , 
+    coll_dict: dict,    key:  ( pair, 'F' or 'R') ,
                         val: カメラ1のある曲線上の指定された1点に対応する，カメラ2上のpair_listで指定された曲線上の複数のidx
 
+    X_Y_Z.coll_dict: list of list of list of tuple of ndarray, of shape (n_labels, n_fragments_cam1, n_fragments_cam2, 2,n_pixel_ids_of_fragment_cam2)
+        X: cam1のid
+        Y: cam2のid
+        Z: F or R
+        n_labels: ラベルの数
+        n_fragments_cam1: cam1内にあるfragmentsの数
+        n_fragments_cam2: cam1内のあるfragmentに対応するcam2内のfragmentの数
+        n_pixel_ids_of_fragment: cam1,cam2のfragmentの交わる画素idの数
+
+        tuple: cam1側の画素id，cam2側の画素id
+
     """
-    #coll_dict = {}
-    with open(r"temp/{0}_{1}_{2}.pair_list".format(pair[0][0],pair[0][1],pair[1]), 'rb') as f:
-            pair_list_taged = pickle.load(f)
-    
+    # coll_dict = {}
+    with open(
+        r"temp/{0}_{1}_{2}.pair_list".format(pair[0][0], pair[0][1], pair[1]), "rb"
+    ) as f:
+        pair_list_taged = pickle.load(f)
+
     im_list = PL_coll(pair, pair_list_taged, cam_list, cam_pairs_F=cam_pairs_F)
-    
-    #os.remove(r"temp/{0}_{1}_{2}.pair_list".format(pair[0][0],pair[0][1],pair[1]))
-    with open(r"temp/{0}_{1}_{2}.coll_dict".format(pair[0][0], pair[0][1], pair[1]), "wb") as f:
+
+    # os.remove(r"temp/{0}_{1}_{2}.pair_list".format(pair[0][0],pair[0][1],pair[1]))
+    with open(
+        r"temp/{0}_{1}_{2}.coll_dict".format(pair[0][0], pair[0][1], pair[1]), "wb"
+    ) as f:
         pickle.dump(im_list, f)
 
 
@@ -302,7 +332,7 @@ def pt_pair(coll_list):
     """点と線の衝突判定
     Parameters
     ======================
-    coll_list: 
+    coll_list:
 
     Returns
     ======================
@@ -338,8 +368,29 @@ def pt_pair(coll_list):
 
 
 def pair_pt_gen(tag):
+    """_summary_
+
+    Parameters
+    ----------
+    tag : _type_
+        _description_
+
+    X_Y_Z.pair_pt: list of list of list of tuple of ndarray, of shape (n_labels, n_fragments_cam1, n_fragments_cam2, 2,n_pixel_ids_of_fragment_cam2)
+        X: cam1のid
+        Y: cam2のid
+        Z: F or R
+        n_labels: ラベルの数
+        n_fragments_cam1: cam1内にあるfragmentsの数
+        n_fragments_cam2: cam1内のあるfragmentに対応するcam2内のfragmentの数
+        n_pixel_ids_of_fragment: cam1,cam2のfragmentの交わる画素idの数
+
+        coll_dictから交差を除去したもの
+
+    """
     im_list = []
-    with open(r"temp/{0}_{1}_{2}.coll_dict".format(tag[0][0],tag[0][1],tag[1]), 'rb') as f:
+    with open(
+        r"temp/{0}_{1}_{2}.coll_dict".format(tag[0][0], tag[0][1], tag[1]), "rb"
+    ) as f:
         coll_dict_taged = pickle.load(f)
     for col in coll_dict_taged:
         col_list = []
@@ -351,10 +402,10 @@ def pair_pt_gen(tag):
             col_list.append(f_list)
         im_list.append(col_list)
 
-        #pair_pt[i] = im_list
+        # pair_pt[i] = im_list
     os.remove(r"temp/{0}_{1}_{2}.coll_dict".format(tag[0][0], tag[0][1], tag[1]))
 
-    with open(r"temp/{0}_{1}_{2}.pair_pt".format(tag[0][0], tag[0][1], tag[1]), "wb") as f:
+    with open(
+        r"temp/{0}_{1}_{2}.pair_pt".format(tag[0][0], tag[0][1], tag[1]), "wb"
+    ) as f:
         pickle.dump(im_list, f)
-
-
