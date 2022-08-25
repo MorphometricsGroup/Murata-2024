@@ -4,6 +4,8 @@
 import numpy as np
 import pickle
 import os
+from scipy.sparse import csr_matrix, coo_matrix
+
 
 from base import normalization
 
@@ -108,7 +110,7 @@ def nom_F(F):
     """
     Todo: sum -> np.sumの方が良い？
     """
-    return (1 / sum(sum(F**2)) ** (1 / 2)) * F
+    return (1 / np.sum(np.sum(F**2)) ** (1 / 2)) * F
 
 
 def cover_mat(x1, y1, x2, y2):
@@ -289,7 +291,6 @@ def TDlines_gen(tag, cam_list=[], cam_pairs_F=[], src_dir="temp"):
         pickle.dump(temp_TDlines, f)
     # TDlines[j] = temp_TDlines
 
-
 def excluded_Parray(ex_tag, cam_list=[]):
     """再投影時に必要のないPを除外したdictを作る
     Parameters
@@ -328,7 +329,7 @@ def dot_P_frag(P, frag):
     repro_frag = []
     for pt in frag:
         repro_pt = np.dot(P, pt)
-        repro_pt = np.array(normalization(repro_pt), dtype=np.float32)
+        repro_pt = np.array(normalization(repro_pt),dtype=np.int16)
         repro_frag.append(repro_pt)
     return np.array(repro_frag)
 
@@ -408,39 +409,6 @@ def connect_contour(contour_list):
     return con_list
 
 
-def cal_distance(repro_P, contour_P):
-    """再投影したfragmentと再投影先の輪郭間の距離を計算
-
-    Parameters
-    ----------
-    repro_P : list of list of shape (n_labels, n_fragmets_3d/n_pairs) of ndarray of shape (n_pixels_repro, 2)
-        3D fragmentの再投影先での座標
-
-    contour_P : list of list of shape (n_labels, n_contours) of ndarray of shape (n_pixels, 2)
-        再投影先の輪郭情報をもつ
-        n_contours: ある画像中の輪郭の数
-
-        輪郭の座標値
-
-    Returns
-    -------
-    _type_
-        _description_
-    """
-    contour_P = connect_contour(contour_P)
-    distance_list = []
-    for repro_col, con_col in zip(repro_P, contour_P):
-        col_list = []
-        for repro_frag in repro_col:
-            repro_frag_bro = np.repeat(repro_frag, len(con_col), axis=0).reshape(
-                (repro_frag.shape[0], len(con_col), repro_frag.shape[1])
-            )
-            distance = (np.sum((con_col - repro_frag_bro) ** 2, axis=2)) ** (1 / 2)
-            col_list.append(distance)
-        distance_list.append(col_list)
-    return distance_list
-
-
 def distance_check(distance_list):
     """_summary_
 
@@ -462,15 +430,82 @@ def distance_check(distance_list):
         col_list = []
         ac_col_list = []
         for frag in col:
-            ac = np.array((np.min(frag, axis=1)) < 5, dtype=np.int64)  # 条件:10 pixel以内
-            col_list.append(sum(ac) / len(ac))
+            ac = np.array((np.min(frag, axis=1)) < 10)  # 条件:10 pixel以内
+            col_list.append(np.sum(ac, dtype=np.uint16) / len(ac))
             ac_col_list.append(ac)
         ac_list.append(ac_col_list)
         dist_check_list.append(np.array(col_list))
     return ac_list, dist_check_list
 
 
+def repro_sparse(repro_dict_taged):
+    
+    r_dict = {}
+    for key in repro_dict_taged:
+        k_list = []
+        for label in repro_dict_taged[key]:
+            l_list=[]
+            for frag in label:
+                #COOで置き換え
+                #a = coo_matrix((1080,1920),dtype=np.int16)
+                n_frag, idx = np.unique(frag, axis=0, return_inverse=True)
+                n_frag_len = len(n_frag)
+                data = np.arange(n_frag_len)+1
+                col = n_frag[:,0]
+                row = n_frag[:,1]
+
+                #for i, coord in enumerate(n_frag):
+                #    if (coord[1] < 1080) & (coord[1] >= 0) & (coord[0] < 1920) & (coord[0] >= 0):
+                #        a[coord[1],coord[0]] = i+1
+                
+                
+                if  (np.sum(row>=1080)) | (np.sum(row<0)) | (np.sum(col>=1920)) | (np.sum(row<0)):
+                    l_list.append((0,idx,n_frag_len))
+                    
+                else:
+                    a = coo_matrix((data, (row, col)), shape=(1080, 1920))
+                    l_list.append((a.tocsr(copy=True), idx, n_frag_len))
+                    
+            k_list.append(l_list)
+        r_dict[key] = k_list
+    return r_dict
+
+
+def cal_distance(repro_sparse_P, contour_sparse_P):
+    dist_check_list = []
+    ac_list = []
+    for repro_col, con_col in zip(repro_sparse_P, contour_sparse_P):
+        col_list = []
+        ac_col_list = []
+        for repro_frag in repro_col:
+            if type(repro_frag[0]) == int:
+                col_list.append(0)
+                frag_ac = np.zeros(len(repro_frag[1]))
+                ac_col_list.append(frag_ac)
+            
+            else:
+                supported = 0
+                frag_ac = np.zeros(len(repro_frag[1]))
+                frag_len = repro_frag[0].count_nonzero()
+                m_csr = repro_frag[0].multiply(con_col)
+                partation = m_csr.count_nonzero()/frag_len
+                
+                if partation > 0.8:
+                    supported = 1
+                    supported_num = np.copy(m_csr.data)
+                    frag_ac = np.zeros(repro_frag[2])
+                    frag_ac[supported_num-1] = 1
+                    frag_ac = frag_ac[repro_frag[1]]
+                col_list.append(supported)
+                ac_col_list.append(frag_ac)
+        dist_check_list.append(np.array(col_list))
+        ac_list.append(ac_col_list)
+        
+    return ac_list, dist_check_list
+
+
 def P_dict_check(repro_dict_taged, cam_list=[]):
+
     """_summary_
 
     Parameters
@@ -489,13 +524,16 @@ def P_dict_check(repro_dict_taged, cam_list=[]):
 
     TODO: docstring
     """
+    repro_dict_taged = repro_sparse(repro_dict_taged)
     P_list = []
     P_ac_list = []
     for P_tag in repro_dict_taged:
         repro_P = repro_dict_taged[P_tag]
-        contour_P = cam_list[P_tag].contour_list
-        distance_list = cal_distance(repro_P, contour_P)
-        ac_list, dist_check_list = distance_check(distance_list)
+        #contour_P = cam_list[P_tag].contour_list
+        contour_P = cam_list[P_tag].contour_img
+        #distance_list = cal_distance(repro_P, contour_P)
+        #ac_list, dist_check_list = distance_check(distance_list)
+        ac_list, dist_check_list = cal_distance(repro_P, contour_P)
         P_list.append(dist_check_list)
         P_ac_list.append(ac_list)
     P_check = np.array(P_list)
@@ -503,6 +541,7 @@ def P_dict_check(repro_dict_taged, cam_list=[]):
 
 
 def P_check_integration(P_check):
+
     """_summary_
 
     Parameters
@@ -523,10 +562,11 @@ def P_check_integration(P_check):
     for col in range(P_check.shape[1]):
         temp_list = []
         for img in P_check[:, col]:
-            temp = np.array(img > 0.8, dtype=np.int64)  # 曲線中の何割が閾値以内か
-            temp_list.append(temp)
-        col_check = np.sum(np.array(temp_list), axis=0)
+            temp = np.array(img > 0.8)  # 曲線中の何割が閾値以内か
+            temp_list.append(img)
+        col_check = np.sum(np.array(temp_list), axis=0, dtype=np.uint16)
         check_list.append(col_check)
+    #print(check_list)
     return check_list
 
 
@@ -620,17 +660,12 @@ def gen_support(tag, cam_list=[]):
         r"temp/{0}_{1}_{2}.reprojection_dict".format(tag[0][0], tag[0][1], tag[1]), "rb"
     ) as f:
         repro_dict_taged = pickle.load(f)
-    # repro_dict_taged = reprojection_dict[tag]
     _, P_ac_list, P_check = P_dict_check(repro_dict_taged, cam_list=cam_list)
     check_list = P_check_integration(P_check)
     inter_ac = ac_list_integration(P_ac_list)
-    # support_dict[tag] = (check_list, inter_ac)
-    os.remove(
-        r"temp/{0}_{1}_{2}.reprojection_dict".format(tag[0][0], tag[0][1], tag[1])
-    )
-    with open(
-        r"temp/{0}_{1}_{2}.support_dict".format(tag[0][0], tag[0][1], tag[1]), "wb"
-    ) as f:
+    os.remove(r"temp/{0}_{1}_{2}.reprojection_dict".format(tag[0][0],tag[0][1],tag[1]))
+    with open(r"temp/{0}_{1}_{2}.support_dict".format(tag[0][0],tag[0][1],tag[1]),"wb") as f:
+
         pickle.dump((check_list, inter_ac), f)
 
     return  # support_dict
