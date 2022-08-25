@@ -13,40 +13,51 @@ class Camera:
     def __init__(self, img_num, f=8000 / 3, cx=1920 / 2, cy=1080 / 2):
         self.img_num = img_num  # カメラ番号（int;コンストラクタ）
 
-        A = np.zeros((3, 3))
-        A[0, 0] = f
-        A[0, 2] = cx
-        A[1, 1] = f
-        A[1, 2] = cy
-        A[2, 2] = 1
+        A = np.array([[f, 0, cx], [0, f, cy], [0, 0, 1]])
 
         self.A = A  # 内部パラメータ(ndarray)後から更新
 
-    def img_load(self, dir_path="images/one_hole_plant_image"):
-        # folder_path = "images/one_hole_plant_image"
-        file_path = os.path.join(dir_path, str(self.img_num) + ".png")
+    def img_load(self, file_path):
+        """_summary_
+
+        Args:
+            file_path (_type_): _description_
+
+        TODO: 画像を1チャネルに変える
+        """
+        # file_path = os.path.join(dir_path, str(self.img_num) + ".png")
         img = cv2.imread(file_path, 1)  # BGRで読み込み
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = cv2.flip(img, 1)
         self.img = img  # 画像(ndarray)
 
-    def contour_extraction(self):
+    def contour_extraction(
+        self,
+        labels=[
+            [255, 0, 0],
+            [0, 255, 0],
+            [0, 0, 255],
+            [255, 255, 0],
+            [255, 0, 255],
+            [0, 255, 255],
+            [127, 127, 127],
+            [127, 0, 127],
+            [0, 127, 127],
+        ],
+    ):
+        """Extract contours based on their labels (colors)
 
-        color_arr = np.array(
-            [
-                [255, 0, 0],
-                [0, 255, 0],
-                [0, 0, 255],
-                [255, 255, 0],
-                [255, 0, 255],
-                [0, 255, 255],
-                [127, 127, 127],
-                [127, 0, 127],
-                [0, 127, 127],
-            ],
-            dtype=np.int16,
+        Args:
+            labels (_type_): _description_
+
+        TODO: 画像を1チャネルに変える
+        """
+
+        n_labels = len(labels)
+        color_arr = np.array(labels, dtype=np.int16)
+        masks = np.ones(
+            (self.img.shape[0], self.img.shape[1], n_labels), dtype=np.uint8
         )
-        masks = np.ones((self.img.shape[0], self.img.shape[1], 9), dtype=np.uint8)
 
         for i, color in enumerate(color_arr):
             lower = np.clip(color, 0, 255)
@@ -68,10 +79,7 @@ class Camera:
 
         # self.frag_list = contours2fragments(self.contour_list) # フラグメントのリスト(list,ndarray)
 
-    def para_load(self, dir_path=pathlib.Path("view_mats/view_mat")):
-
-        # folder_path = pathlib.Path("view_mats/view_mat")
-        file_path = os.path.join(dir_path, str(self.img_num) + ".csv")
+    def para_load(self, file_path):
         self.Rt = np.loadtxt(file_path, delimiter="\t")
         self.P = np.dot(self.A, self.Rt[0:3, 0:4])
         self.cam_world_cood = -np.dot(self.Rt[0:3, 0:3].T, self.Rt[0:3, 3])
@@ -111,7 +119,7 @@ class metashape_Camera:
         # mask_list = []
         contour_list = []
         for mask_path in masks_path:
-            #mask = cood_to_mask(mask_path, (self.img_shape[0], self.img_shape[1]))
+            # mask = cood_to_mask(mask_path, (self.img_shape[0], self.img_shape[1]))
             mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
             contours, hierarchy = cv2.findContours(
                 mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE
@@ -186,6 +194,8 @@ def camera_correspondence(cam_list, angle_upper=1 / 9 * np.pi):
     Returns
     ========================
     pair_list: list of tuple (i,j), i, j: camera_number
+
+    TODO: i,jとimg_num（カメラ番号）のいずれかを使う
 
     """
 
