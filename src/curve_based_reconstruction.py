@@ -7,9 +7,6 @@ import os
 from scipy.sparse import csr_matrix, coo_matrix
 
 
-from base import normalization
-
-
 def FR_frags(dict_tag, cam_list=[]):
     if dict_tag[1] == "F":
         part = cam_list[dict_tag[0][0]].frag_list
@@ -291,6 +288,7 @@ def TDlines_gen(tag, cam_list=[], cam_pairs_F=[], src_dir="temp"):
         pickle.dump(temp_TDlines, f)
     # TDlines[j] = temp_TDlines
 
+
 def excluded_Parray(ex_tag, cam_list=[]):
     """再投影時に必要のないPを除外したdictを作る
     Parameters
@@ -323,15 +321,13 @@ def dot_P_frag(P, frag):
     Returns
     ========================
     np.array(repro_frag): 2D fragment
-
-    TODO: vectorize
     """
-    repro_frag = []
-    for pt in frag:
-        repro_pt = np.dot(P, pt)
-        repro_pt = np.array(normalization(repro_pt),dtype=np.int16)
-        repro_frag.append(repro_pt)
-    return np.array(repro_frag)
+    frag_ = np.concatenate(
+        [frag, np.ones(len(frag)).reshape((len(frag), 1))], 1
+    )  # 末尾に1を追加 (X, Y, Z, 1)
+    repro_frag = np.dot(P, frag_.transpose()).transpose()
+    repro_frag = repro_frag[:, :2] / repro_frag[:, [-1]]
+    return repro_frag.astype(np.int16)
 
 
 def reprojection_gen(tag, cam_list=[], tmp_dir="temp"):
@@ -383,9 +379,6 @@ def reprojection_gen(tag, cam_list=[], tmp_dir="temp"):
             col_list = []
             for i, frag in enumerate(col):
                 frag = frag.reshape((-1, 3))
-                frag = np.concatenate(
-                    [frag, np.ones(len(frag)).reshape((len(frag), 1))], 1
-                )  # 末尾に1を追加 (X, Y, Z, 1)
                 reprojection = dot_P_frag(P, frag)
                 col_list.append(reprojection)
             P_list.append(col_list)
@@ -444,28 +437,33 @@ def repro_sparse(repro_dict_taged, img_shape=(3456, 5184)):
     for key in repro_dict_taged:
         k_list = []
         for label in repro_dict_taged[key]:
-            l_list=[]
+            l_list = []
             for frag in label:
-                #COOで置き換え
-                #a = coo_matrix((1080,1920),dtype=np.int16)
+                # COOで置き換え
+                # a = coo_matrix((1080,1920),dtype=np.int16)
                 n_frag, idx = np.unique(frag, axis=0, return_inverse=True)
                 n_frag_len = len(n_frag)
-                data = np.arange(n_frag_len)+1
-                col = n_frag[:,0]
-                row = n_frag[:,1]
+                data = np.arange(n_frag_len) + 1
+                col = n_frag[:, 0]
+                row = n_frag[:, 1]
 
-                #for i, coord in enumerate(n_frag):
+                # for i, coord in enumerate(n_frag):
                 #    if (coord[1] < 1080) & (coord[1] >= 0) & (coord[0] < 1920) & (coord[0] >= 0):
                 #        a[coord[1],coord[0]] = i+1
-                
-                
-                if  (np.sum(row>=img_shape[0])) | (np.sum(row<img_shape[0])) | (np.sum(col>=img_shape[1])) | (np.sum(row<img_shape[1])):
-                    l_list.append((0,idx,n_frag_len))
-                    
+
+
+                if (
+                    (np.sum(row >= img_shape[0]))
+                    | (np.sum(row < 0))
+                    | (np.sum(col >= img_shape[1]))
+                    | (np.sum(col < 0))
+                ):
+                    l_list.append((0, idx, n_frag_len))
+
                 else:
                     a = coo_matrix((data, (row, col)), shape=(img_shape[0], img_shape[1]))
                     l_list.append((a.tocsr(copy=True), idx, n_frag_len))
-                    
+
             k_list.append(l_list)
         r_dict[key] = k_list
     return r_dict
@@ -482,25 +480,25 @@ def cal_distance(repro_sparse_P, contour_sparse_P):
                 col_list.append(0)
                 frag_ac = np.zeros(len(repro_frag[1]))
                 ac_col_list.append(frag_ac)
-            
+
             else:
                 supported = 0
                 frag_ac = np.zeros(len(repro_frag[1]))
                 frag_len = repro_frag[0].count_nonzero()
                 m_csr = repro_frag[0].multiply(con_col)
-                partation = m_csr.count_nonzero()/frag_len
-                
+                partation = m_csr.count_nonzero() / frag_len
+
                 if partation > 0.8:
                     supported = 1
                     supported_num = np.copy(m_csr.data)
                     frag_ac = np.zeros(repro_frag[2])
-                    frag_ac[supported_num-1] = 1
+                    frag_ac[supported_num - 1] = 1
                     frag_ac = frag_ac[repro_frag[1]]
                 col_list.append(supported)
                 ac_col_list.append(frag_ac)
         dist_check_list.append(np.array(col_list))
         ac_list.append(ac_col_list)
-        
+
     return ac_list, dist_check_list
 
 
@@ -529,10 +527,10 @@ def P_dict_check(repro_dict_taged, cam_list=[]):
     P_ac_list = []
     for P_tag in repro_dict_taged:
         repro_P = repro_dict_taged[P_tag]
-        #contour_P = cam_list[P_tag].contour_list
+        # contour_P = cam_list[P_tag].contour_list
         contour_P = cam_list[P_tag].contour_img
-        #distance_list = cal_distance(repro_P, contour_P)
-        #ac_list, dist_check_list = distance_check(distance_list)
+        # distance_list = cal_distance(repro_P, contour_P)
+        # ac_list, dist_check_list = distance_check(distance_list)
         ac_list, dist_check_list = cal_distance(repro_P, contour_P)
         P_list.append(dist_check_list)
         P_ac_list.append(ac_list)
@@ -566,7 +564,7 @@ def P_check_integration(P_check):
             temp_list.append(img)
         col_check = np.sum(np.array(temp_list), axis=0, dtype=np.uint16)
         check_list.append(col_check)
-    #print(check_list)
+    # print(check_list)
     return check_list
 
 
@@ -663,8 +661,12 @@ def gen_support(tag, cam_list=[]):
     _, P_ac_list, P_check = P_dict_check(repro_dict_taged, cam_list=cam_list)
     check_list = P_check_integration(P_check)
     inter_ac = ac_list_integration(P_ac_list)
-    os.remove(r"temp/{0}_{1}_{2}.reprojection_dict".format(tag[0][0],tag[0][1],tag[1]))
-    with open(r"temp/{0}_{1}_{2}.support_dict".format(tag[0][0],tag[0][1],tag[1]),"wb") as f:
+    os.remove(
+        r"temp/{0}_{1}_{2}.reprojection_dict".format(tag[0][0], tag[0][1], tag[1])
+    )
+    with open(
+        r"temp/{0}_{1}_{2}.support_dict".format(tag[0][0], tag[0][1], tag[1]), "wb"
+    ) as f:
 
         pickle.dump((check_list, inter_ac), f)
 
