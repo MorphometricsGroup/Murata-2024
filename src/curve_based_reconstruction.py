@@ -322,7 +322,10 @@ def dot_P_frag(P, frag):
     ========================
     np.array(repro_frag): 2D fragment
     """
-    repro_frag = np.dot(P, frag.transpose()).transpose()
+    frag_ = np.concatenate(
+        [frag, np.ones(len(frag)).reshape((len(frag), 1))], 1
+    )  # 末尾に1を追加 (X, Y, Z, 1)
+    repro_frag = np.dot(P, frag_.transpose()).transpose()
     repro_frag = repro_frag[:, :2] / repro_frag[:, [-1]]
     return repro_frag.astype(np.int16)
 
@@ -376,9 +379,6 @@ def reprojection_gen(tag, cam_list=[], tmp_dir="temp"):
             col_list = []
             for i, frag in enumerate(col):
                 frag = frag.reshape((-1, 3))
-                frag = np.concatenate(
-                    [frag, np.ones(len(frag)).reshape((len(frag), 1))], 1
-                )  # 末尾に1を追加 (X, Y, Z, 1)
                 reprojection = dot_P_frag(P, frag)
                 col_list.append(reprojection)
             P_list.append(col_list)
