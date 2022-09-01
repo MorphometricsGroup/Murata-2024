@@ -431,8 +431,8 @@ def distance_check(distance_list):
     return ac_list, dist_check_list
 
 
-def repro_sparse(repro_dict_taged):
-
+def repro_sparse(repro_dict_taged, img_shape=(3456, 5184)):
+    
     r_dict = {}
     for key in repro_dict_taged:
         k_list = []
@@ -451,17 +451,17 @@ def repro_sparse(repro_dict_taged):
                 #    if (coord[1] < 1080) & (coord[1] >= 0) & (coord[0] < 1920) & (coord[0] >= 0):
                 #        a[coord[1],coord[0]] = i+1
 
+
                 if (
-                    (np.sum(row >= 1080))
+                    (np.sum(row >= img_shape[0]))
                     | (np.sum(row < 0))
-                    | (np.sum(col >= 1920))
+                    | (np.sum(col >= img_shape[1]))
                     | (np.sum(col < 0))
                 ):
                     l_list.append((0, idx, n_frag_len))
 
-
                 else:
-                    a = coo_matrix((data, (row, col)), shape=(1080, 1920))
+                    a = coo_matrix((data, (row, col)), shape=(img_shape[0], img_shape[1]))
                     l_list.append((a.tocsr(copy=True), idx, n_frag_len))
 
             k_list.append(l_list)
