@@ -459,7 +459,7 @@ def repro_sparse(repro_dict_taged):
                 #        a[coord[1],coord[0]] = i+1
                 
                 
-                if  (np.sum(row>=1080)) | (np.sum(row<0)) | (np.sum(col>=1920)) | (np.sum(row<0)):
+                if  (np.sum(row>=1080)) | (np.sum(row<0)) | (np.sum(col>=1920)) | (np.sum(col<0)):
                     l_list.append((0,idx,n_frag_len))
                     
                 else:
