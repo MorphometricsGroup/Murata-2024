@@ -216,10 +216,10 @@ def pair_and_key_gen(pair, cam_list=[], cam_pairs_F=[], dest_dir="temp"):
         n_fragments_cam1: cam1内にあるfragmentsの数
         n_fragment_ids_cam2: cam1内のあるfragmentに対応するcam2内のfragmentのidの数
     """
-    pair_list = {}
+    #pair_list = {}
     F = cam_pairs_F[pair]
     frags_para12 = epilines_para(cam_list[pair[0]].frag_list, F)  # frags_para[色][frag]
-    frags_para21 = epilines_para(cam_list[pair[1]].frag_list, F.T)
+    #frags_para21 = epilines_para(cam_list[pair[1]].frag_list, F.T)
 
     cood_S, cood_F = get_frag_cood(cam_list[pair[1]].frag_list)
     epi_cood_S, epi_cood_F = all_pa2co(frags_para12)
@@ -239,7 +239,7 @@ def pair_and_key_gen(pair, cam_list=[], cam_pairs_F=[], dest_dir="temp"):
         pickle.dump(img_list1, f)
 
     # pair_list[(pair, "R")] = img_list2
-    return pair_list
+    return 
 
 
 def PL_coll(pair, pair_list_taged, cam_list, cam_pairs_F=[]):
