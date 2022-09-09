@@ -215,11 +215,14 @@ def pair_and_key_gen(pair, cam_list=[], cam_pairs_F=[], dest_dir="temp"):
         n_labels: ラベルの数
         n_fragments_cam1: cam1内にあるfragmentsの数
         n_fragment_ids_cam2: cam1内のあるfragmentに対応するcam2内のfragmentのidの数
+
+    TODO:
+        * 21側を削除した理由
     """
-    #pair_list = {}
+    # pair_list = {}
     F = cam_pairs_F[pair]
     frags_para12 = epilines_para(cam_list[pair[0]].frag_list, F)  # frags_para[色][frag]
-    #frags_para21 = epilines_para(cam_list[pair[1]].frag_list, F.T)
+    # frags_para21 = epilines_para(cam_list[pair[1]].frag_list, F.T)
 
     cood_S, cood_F = get_frag_cood(cam_list[pair[1]].frag_list)
     epi_cood_S, epi_cood_F = all_pa2co(frags_para12)
@@ -230,16 +233,17 @@ def pair_and_key_gen(pair, cam_list=[], cam_pairs_F=[], dest_dir="temp"):
     # img_list2 = make_pair_list(epi_cood_S, epi_cood_F, cood_S, cood_F)
 
     # pair_list[(pair, "F")] = img_list1
-    if not os.path.exists(dest_dir):
-        os.makedirs(dest_dir)
-    dest_file_path = os.path.join(
-        dest_dir, r"{0}_{1}_{2}.pair_list".format(pair[0], pair[1], "F")
-    )
-    with open(dest_file_path, "wb") as f:
-        pickle.dump(img_list1, f)
+    # if not os.path.exists(dest_dir):
+    #     os.makedirs(dest_dir)
+    # dest_file_path = os.path.join(
+    #     dest_dir, r"{0}_{1}_{2}.pair_list".format(pair[0], pair[1], "F")
+    # )
+    # with open(dest_file_path, "wb") as f:
+    #     pickle.dump(img_list1, f)
 
     # pair_list[(pair, "R")] = img_list2
-    return 
+    # return
+    return img_list1
 
 
 def PL_coll(pair, pair_list_taged, cam_list, cam_pairs_F=[]):
@@ -289,7 +293,7 @@ def PL_coll(pair, pair_list_taged, cam_list, cam_pairs_F=[]):
     return im_list
 
 
-def coll_dict_gen(pair, cam_list=[], cam_pairs_F=[]):
+def coll_dict_gen(pair_list_taged, pair, cam_list=[], cam_pairs_F=[]):
     """点と線の衝突判定
     Parameters
     ======================
@@ -312,20 +316,24 @@ def coll_dict_gen(pair, cam_list=[], cam_pairs_F=[]):
 
         tuple: cam1側の画素id，cam2側の画素id
 
+    TODO:
+        この関数の必要性
     """
     # coll_dict = {}
-    with open(
-        r"temp/{0}_{1}_{2}.pair_list".format(pair[0][0], pair[0][1], pair[1]), "rb"
-    ) as f:
-        pair_list_taged = pickle.load(f)
+    # with open(
+    #     r"temp/{0}_{1}_{2}.pair_list".format(pair[0][0], pair[0][1], pair[1]), "rb"
+    # ) as f:
+    #     pair_list_taged = pickle.load(f)
 
     im_list = PL_coll(pair, pair_list_taged, cam_list, cam_pairs_F=cam_pairs_F)
 
     # os.remove(r"temp/{0}_{1}_{2}.pair_list".format(pair[0][0],pair[0][1],pair[1]))
-    with open(
-        r"temp/{0}_{1}_{2}.coll_dict".format(pair[0][0], pair[0][1], pair[1]), "wb"
-    ) as f:
-        pickle.dump(im_list, f)
+    # with open(
+    #     r"temp/{0}_{1}_{2}.coll_dict".format(pair[0][0], pair[0][1], pair[1]), "wb"
+    # ) as f:
+    #     pickle.dump(im_list, f)
+
+    return im_list
 
 
 def pt_pair(coll_list):
@@ -367,7 +375,7 @@ def pt_pair(coll_list):
     return np.array([pool_i, pool_j])
 
 
-def pair_pt_gen(tag):
+def pair_pt_gen(coll_dict_taged, tag):
     """_summary_
 
     Parameters
@@ -388,10 +396,11 @@ def pair_pt_gen(tag):
 
     """
     im_list = []
-    with open(
-        r"temp/{0}_{1}_{2}.coll_dict".format(tag[0][0], tag[0][1], tag[1]), "rb"
-    ) as f:
-        coll_dict_taged = pickle.load(f)
+    # with open(
+    #     r"temp/{0}_{1}_{2}.coll_dict".format(tag[0][0], tag[0][1], tag[1]), "rb"
+    # ) as f:
+    #     coll_dict_taged = pickle.load(f)
+
     for col in coll_dict_taged:
         col_list = []
         for frag in col:
@@ -403,9 +412,11 @@ def pair_pt_gen(tag):
         im_list.append(col_list)
 
         # pair_pt[i] = im_list
-    os.remove(r"temp/{0}_{1}_{2}.coll_dict".format(tag[0][0], tag[0][1], tag[1]))
+    # os.remove(r"temp/{0}_{1}_{2}.coll_dict".format(tag[0][0], tag[0][1], tag[1]))
 
-    with open(
-        r"temp/{0}_{1}_{2}.pair_pt".format(tag[0][0], tag[0][1], tag[1]), "wb"
-    ) as f:
-        pickle.dump(im_list, f)
+    # with open(
+    #     r"temp/{0}_{1}_{2}.pair_pt".format(tag[0][0], tag[0][1], tag[1]), "wb"
+    # ) as f:
+    #     pickle.dump(im_list, f)
+
+    return im_list
