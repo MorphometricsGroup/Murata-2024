@@ -104,9 +104,6 @@ def FR_check(dict_tag, cam_list=[], cam_pairs_F=[]):
 
 
 def nom_F(F):
-    """
-    Todo: sum -> np.sumの方が良い？
-    """
     return (1 / np.sum(np.sum(F**2)) ** (1 / 2)) * F
 
 
@@ -458,7 +455,6 @@ def repro_sparse(repro_dict_taged):
                     | (np.sum(col < 0))
                 ):
                     l_list.append((0, idx, n_frag_len))
-
 
                 else:
                     a = coo_matrix((data, (row, col)), shape=(1080, 1920))
