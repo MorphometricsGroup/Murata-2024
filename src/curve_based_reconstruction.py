@@ -319,7 +319,10 @@ def dot_P_frag(P, frag):
     ========================
     np.array(repro_frag): 2D fragment
     """
-    repro_frag = np.dot(P, frag.transpose()).transpose()
+    frag_ = np.concatenate(
+        [frag, np.ones(len(frag)).reshape((len(frag), 1))], 1
+    )  # 末尾に1を追加 (X, Y, Z, 1)
+    repro_frag = np.dot(P, frag_.transpose()).transpose()
     repro_frag = repro_frag[:, :2] / repro_frag[:, [-1]]
     return repro_frag.astype(np.int16)
 
@@ -373,9 +376,6 @@ def reprojection_gen(tag, cam_list=[], tmp_dir="temp"):
             col_list = []
             for i, frag in enumerate(col):
                 frag = frag.reshape((-1, 3))
-                frag = np.concatenate(
-                    [frag, np.ones(len(frag)).reshape((len(frag), 1))], 1
-                )  # 末尾に1を追加 (X, Y, Z, 1)
                 reprojection = dot_P_frag(P, frag)
                 col_list.append(reprojection)
             P_list.append(col_list)
@@ -428,41 +428,60 @@ def distance_check(distance_list):
     return ac_list, dist_check_list
 
 
-def repro_sparse(repro_dict_taged):
+def repro_sparse_core(frag, img_shape=(1080, 1920)):
+    n_frag, idx = np.unique(frag, axis=0, return_inverse=True)
+    n_frag_len = len(n_frag)
+    data = np.arange(n_frag_len) + 1
+    col = n_frag[:, 0]
+    row = n_frag[:, 1]
 
-    r_dict = {}
-    for key in repro_dict_taged:
-        k_list = []
-        for label in repro_dict_taged[key]:
-            l_list = []
-            for frag in label:
-                # COOで置き換え
-                # a = coo_matrix((1080,1920),dtype=np.int16)
-                n_frag, idx = np.unique(frag, axis=0, return_inverse=True)
-                n_frag_len = len(n_frag)
-                data = np.arange(n_frag_len) + 1
-                col = n_frag[:, 0]
-                row = n_frag[:, 1]
+    if (
+        (np.sum(row >= img_shape[0]))
+        | (np.sum(row < 0))
+        | (np.sum(col >= img_shape[1]))
+        | (np.sum(col < 0))
+    ):
+        return (0, idx, n_frag_len)
 
-                # for i, coord in enumerate(n_frag):
-                #    if (coord[1] < 1080) & (coord[1] >= 0) & (coord[0] < 1920) & (coord[0] >= 0):
-                #        a[coord[1],coord[0]] = i+1
+    else:
+        spa = coo_matrix((data, (row, col)), shape=(img_shape[0], img_shape[1]))
+        
+        return (spa.tocsr(copy=True), idx, n_frag_len)
 
-                if (
-                    (np.sum(row >= 1080))
-                    | (np.sum(row < 0))
-                    | (np.sum(col >= 1920))
-                    | (np.sum(col < 0))
-                ):
-                    l_list.append((0, idx, n_frag_len))
 
-                else:
-                    a = coo_matrix((data, (row, col)), shape=(1080, 1920))
-                    l_list.append((a.tocsr(copy=True), idx, n_frag_len))
+def repro_sparse(repro_P):
+    
+    k_list = []
+    for label in repro_dict_taged[key]:
+        l_list = []
+        for frag in label:
+            a = repro_sparse_core(frag)
+            l_list.append(a)
 
-            k_list.append(l_list)
-        r_dict[key] = k_list
-    return r_dict
+        k_list.append(l_list)
+    return k_list
+
+
+
+def cal_distance_core(repro_frag, con_col):
+    supported = 0
+    if type(repro_frag[0]) == int:
+        frag_ac = np.zeros(len(repro_frag[1]))
+
+    else:
+        frag_ac = np.zeros(len(repro_frag[1]))
+        frag_len = repro_frag[0].count_nonzero()
+        m_csr = repro_frag[0].multiply(con_col)
+        partation = m_csr.count_nonzero() / frag_len
+
+        if partation > 0.8:
+            supported = 1
+            supported_num = np.copy(m_csr.data)
+            frag_ac = np.zeros(repro_frag[2])
+            frag_ac[supported_num - 1] = 1
+            frag_ac = frag_ac[repro_frag[1]]
+        
+    return supported, frag_ac
 
 
 def cal_distance(repro_sparse_P, contour_sparse_P):
@@ -472,26 +491,10 @@ def cal_distance(repro_sparse_P, contour_sparse_P):
         col_list = []
         ac_col_list = []
         for repro_frag in repro_col:
-            if type(repro_frag[0]) == int:
-                col_list.append(0)
-                frag_ac = np.zeros(len(repro_frag[1]))
-                ac_col_list.append(frag_ac)
-
-            else:
-                supported = 0
-                frag_ac = np.zeros(len(repro_frag[1]))
-                frag_len = repro_frag[0].count_nonzero()
-                m_csr = repro_frag[0].multiply(con_col)
-                partation = m_csr.count_nonzero() / frag_len
-
-                if partation > 0.8:
-                    supported = 1
-                    supported_num = np.copy(m_csr.data)
-                    frag_ac = np.zeros(repro_frag[2])
-                    frag_ac[supported_num - 1] = 1
-                    frag_ac = frag_ac[repro_frag[1]]
-                col_list.append(supported)
-                ac_col_list.append(frag_ac)
+            repro_frag = repro_sparse_core(repro_frag, img_shape=(1080, 1920))
+            supported, frag_ac = cal_distance_core(repro_frag, con_col)
+            col_list.append(supported)
+            ac_col_list.append(frag_ac)
         dist_check_list.append(np.array(col_list))
         ac_list.append(ac_col_list)
 
@@ -518,7 +521,7 @@ def P_dict_check(repro_dict_taged, cam_list=[]):
 
     TODO: docstring
     """
-    repro_dict_taged = repro_sparse(repro_dict_taged)
+    #repro_dict_taged = repro_sparse(repro_dict_taged)
     P_list = []
     P_ac_list = []
     for P_tag in repro_dict_taged:

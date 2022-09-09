@@ -17,7 +17,7 @@ class Camera:
 
         self.A = A  # 内部パラメータ(ndarray)後から更新
 
-    def img_load(self, file_path):
+    def img_load(self, dir_path):
         """_summary_
 
         Args:
@@ -25,7 +25,7 @@ class Camera:
 
         TODO: 画像を1チャネルに変える
         """
-        # file_path = os.path.join(dir_path, str(self.img_num) + ".png")
+        file_path = os.path.join(dir_path, str(self.img_num) + ".png")
         img = cv2.imread(file_path, 1)  # BGRで読み込み
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = cv2.flip(img, 1)
