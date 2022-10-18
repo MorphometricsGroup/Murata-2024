@@ -6,8 +6,8 @@ simlation_data/images
 simlation_data/temp
 simlation_data/.ipynb_checkpoints
 real_data/.ipynb_checkpoints
-real_data/postprocessing/real_leafs.curves
-real_data/postprocessing/real_leaf_2.curves
+real_data/postprocessing/curves
+
 
 
 

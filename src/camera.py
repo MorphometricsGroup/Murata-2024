@@ -65,7 +65,7 @@ class Camera:
             img_mask = cv2.inRange(self.img, lower, upper)
             masks[:, :, i] = img_mask
 
-        # self.masks = masks # 色ごとのマスク(nd.array)
+        self.masks = masks # 色ごとのマスク(nd.array)
 
         contour_list = []
 
@@ -112,15 +112,15 @@ class metashape_Camera:
         self.img = img  # 画像(ndarray)
         self.img_shape = img.shape
 
-    def contour_load(self, folder="masks/annotation_mask"):
+    def contour_load(self, folder="masks/GmJMC025_02_mask"):
         folder_ = pathlib.Path(folder)
-        masks_path = folder_.glob(str(self.img_num) + "_" + "*" + ".jpg")
+        masks_path = folder_.glob(str(self.img_num) + "_" + "*" + ".csv")
 
         # mask_list = []
         contour_list = []
         for mask_path in masks_path:
-            # mask = cood_to_mask(mask_path, (self.img_shape[0], self.img_shape[1]))
-            mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
+            mask = cood_to_mask(mask_path, (self.img_shape[0], self.img_shape[1]))
+            #mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)            
             contours, hierarchy = cv2.findContours(
                 mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE
             )
@@ -129,7 +129,7 @@ class metashape_Camera:
         # self.masks = np.asarray(mask_list).transpose(1, 2, 0)
         self.contour_list = contour_list
 
-    def label_load(self, label_path="label.pickle"):
+    def label_load(self, label_path="genelated_mask_label.pickle"):
         with open(label_path, "rb") as f:
             self.labels = pickle.load(f)
 
