@@ -1,4 +1,4 @@
-##カメラペアを作る
+## カメラペアを作る
 '''Python
 cam_list = [Camera(i) for i in range(48)]
 for i in range(len(cam_list)):
@@ -12,7 +12,7 @@ print(len(cam_pairs))
 '''
 
 
-##エピポール取得
+## エピポール取得
 '''Python
 epipole_dict = {i:[] for i in range(len(cam_list))}
 cam_pairs_F = {}
@@ -24,7 +24,7 @@ for i in cam_pairs:
 '''
 
 
-##エピポーラ線に接する部分を削除する，輪郭をフラグメントにする．
+## エピポーラ線に接する部分を削除する，輪郭をフラグメントにする．
 '''Python
 for i in range(len(cam_list)):
     im_del_list = all_D(epipole_angle(i, epipole_dict, cam_list=cam_list))# im_del_list[color][contour][del_idx]
@@ -35,14 +35,14 @@ del epipole_dict
 '''
 
 
-##カーブフラグメントのペアを作る
+## カーブフラグメントのペアを作る
 '''Python
 _ = joblib.Parallel(n_jobs=-1, verbose=0)(joblib.delayed(pair_and_key_gen_one_label)(
     label_num, i, cam_list, cam_pairs_F) for i in cam_pairs_F)
 '''
 
 
-##カメラペアタグを取得
+## カメラペアタグを取得
 '''Python
 temp_path = pathlib.Path("temp/")
 tags_path = list(temp_path.glob("*.pair_list"))
@@ -55,7 +55,7 @@ for tag_path in tags_path:
 '''
 
 
-##カーブフラグメントペア内の点の対応を取得する
+## カーブフラグメントペア内の点の対応を取得する
 '''Python
 _ = joblib.Parallel(n_jobs=-1, verbose=0)(joblib.delayed(coll_dict_gen_one_label)(
     label_num, i, cam_list, cam_pairs_F) for i in tags)
@@ -64,14 +64,14 @@ _ = joblib.Parallel(n_jobs=-1, verbose=0)(joblib.delayed(pair_pt_gen_one_label)(
 '''
 
 
-##インデックスから座標を引っ張ってくる
+## インデックスから座標を引っ張ってくる
 '''Python
 _ = joblib.Parallel(n_jobs=-1, verbose=0)(joblib.delayed(coordinate_dict_gen_one_label)(
     label_num, i, cam_list) for i in tags)
 '''
 
 
-##座標値から三次元再構築を行う
+## 座標値から三次元再構築を行う
 '''Python
 _ = joblib.Parallel(n_jobs=-1,verbose=0)(joblib.delayed(TDlines_gen_one_label)(
     tag, cam_list=cam_list, cam_pairs_F=cam_pairs_F) for tag in tags)
@@ -84,13 +84,14 @@ _ = joblib.Parallel(n_jobs=-1,verbose=0)(joblib.delayed(reprojection_gen_one_lab
 '''
 
 
-##再投影からサポートを計算する
+## 再投影からサポートを計算する
 '''Python
 _ = joblib.Parallel(n_jobs=-1,verbose=0)(joblib.delayed(gen_support_one_label)(label_num, tag, cam_list, image_shape=(1080, 1920)) for tag in tags)
 '''
 
 
-##閾値以上のサポートを受けた3次元曲線フラグメントだけを取り出す
+## 閾値以上のサポートを受けた3次元曲線フラグメントだけを取り出す
+
 '''Python
 sup_th = 20# サポート数
 curve_fragment = []
