@@ -78,6 +78,27 @@ class Camera:
         self.contour_list = contour_list  # 輪郭のリスト(list,ndarray)
 
         # self.frag_list = contours2fragments(self.contour_list) # フラグメントのリスト(list,ndarray)
+    def label_load(self, label_path=""):
+        with open(label_path, "rb") as f:
+            self.labels = pickle.load(f)
+
+        max_num = 0
+        for label in self.labels:
+            temp_max = np.max(label)
+            if max_num < temp_max:
+                max_num = temp_max
+        self.max_num = max_num
+
+    def correspondence_contour(self):
+        correspondence_list = []
+
+        for i in range(self.max_num + 1):
+            temp_c_list = []
+            idx = np.where(self.labels[self.img_num] == i)
+            if idx[0].size != 0:
+                for j in idx[0]:
+                    temp_c_list += self.contour_list[j]
+            correspondence_list.append(temp_c_list)
 
     def para_load(self, file_path):
         self.Rt = np.loadtxt(file_path, delimiter="\t")
