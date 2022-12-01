@@ -125,7 +125,7 @@ def para2cood_S(para_list):
     return np.array([[0, -c / b] for a, b, c in para_list])
 
 
-def para2cood_F(para_list, img_width=5184):
+def para2cood_F(para_list, img_width=1920):
     return np.array([[img_width, -(img_width * a + c) / b] for a, b, c in para_list])
 
 

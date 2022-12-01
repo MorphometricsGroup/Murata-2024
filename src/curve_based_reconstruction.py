@@ -431,7 +431,7 @@ def distance_check(distance_list):
     return ac_list, dist_check_list
 
 
-def repro_sparse_core(frag, img_shape=(3456, 5184)):
+def repro_sparse_core(frag, img_shape=(1080, 1920)):
     n_frag, idx = np.unique(frag, axis=0, return_inverse=True)
     n_frag_len = len(n_frag)
     data = np.arange(n_frag_len) + 1
@@ -493,7 +493,7 @@ def cal_distance(repro_sparse_P, contour_sparse_P):
         col_list = []
         ac_col_list = []
         for repro_frag in repro_col:
-            repro_frag = repro_sparse_core(repro_frag, img_shape=(3456, 5184))
+            repro_frag = repro_sparse_core(repro_frag, img_shape=(1080, 1920))
             supported, frag_ac = cal_distance_core(repro_frag, con_col)
             col_list.append(supported)
             ac_col_list.append(frag_ac)
