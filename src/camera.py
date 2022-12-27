@@ -25,11 +25,14 @@ class Camera:
 
         TODO: 画像を1チャネルに変える
         """
-        file_path = os.path.join(dir_path, str(self.img_num) + ".png")
-        img = cv2.imread(file_path, 1)  # BGRで読み込み
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        img = cv2.flip(img, 1)
-        self.img = img  # 画像(ndarray)
+        img_list = []
+        for i in range(8):
+            file_path = os.path.join(dir_path, "{}_{}.png".format(self.img_num, i))
+            img = cv2.imread(file_path, 1)  # BGRで読み込み
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            img = cv2.flip(img, 1)
+            img_list.append(img)
+        self.img = img_list  # 画像(ndarray)
 
     def contour_extraction(
         self,
@@ -41,8 +44,7 @@ class Camera:
             [255, 0, 255],
             [0, 255, 255],
             [127, 127, 127],
-            [127, 0, 127],
-            [0, 127, 127],
+            [127, 0, 127]
         ],
     ):
         """Extract contours based on their labels (colors)
@@ -56,13 +58,13 @@ class Camera:
         n_labels = len(labels)
         color_arr = np.array(labels, dtype=np.int16)
         masks = np.ones(
-            (self.img.shape[0], self.img.shape[1], n_labels), dtype=np.uint8
+            (self.img[0].shape[0], self.img[0].shape[1], n_labels), dtype=np.uint8
         )
 
         for i, color in enumerate(color_arr):
             lower = np.clip(color, 0, 255)
             upper = np.clip(color, 0, 255)
-            img_mask = cv2.inRange(self.img, lower, upper)
+            img_mask = cv2.inRange(self.img[i], lower, upper)
             masks[:, :, i] = img_mask
 
         self.masks = masks # 色ごとのマスク(nd.array)
@@ -133,15 +135,33 @@ class metashape_Camera:
         self.img = img  # 画像(ndarray)
         self.img_shape = img.shape
 
-    def contour_load(self, folder="masks/GmJMC025_02_mask"):
+    def contour_load(self, folder="masks/annotation_mask"):
         folder_ = pathlib.Path(folder)
-        masks_path = folder_.glob(str(self.img_num) + "_" + "*" + ".csv")
+        masks_path = folder_.glob(str(self.img_num) + "_" + "*" + ".png")
 
         # mask_list = []
         contour_list = []
         for mask_path in masks_path:
-            mask = cood_to_mask(mask_path, (self.img_shape[0], self.img_shape[1]))
-            #mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)            
+            #mask = cood_to_mask(mask_path, (self.img_shape[0], self.img_shape[1]))
+            mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
+            _, mask = cv2.threshold(mask, 200, 255, cv2.THRESH_BINARY)
+            #self.mask = mask
+            
+            #nlabels, labels = cv2.connectedComponents(mask)
+            #if nlabels>2:
+            #    areas = np.zeros(nlabels)
+            #    area_sum = 0
+            #    for i in range(1,nlabels):
+            #        area = np.sum(labels == i)
+            #        area_sum += area
+            #        areas[i-1]=area
+            #    area_partation = area/area_sum
+            #    if np.max(area_partation)>0.7:
+            #        _mask = labels == np.argmax(area_partation)
+            #        mask = _mask.astype("uint8")*255
+            #    else:
+            #        mask = np.zeros(mask.shape).astype("uint8")
+            
             contours, hierarchy = cv2.findContours(
                 mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE
             )
