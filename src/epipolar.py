@@ -125,11 +125,11 @@ def para2cood_S(para_list):
     return np.array([[0, -c / b] for a, b, c in para_list])
 
 
-def para2cood_F(para_list, img_width=1920):
+def para2cood_F(para_list, img_width):
     return np.array([[img_width, -(img_width * a + c) / b] for a, b, c in para_list])
 
 
-def all_pa2co(para_list):
+def all_pa2co(para_list, width):
     epi_cood_S = []
     epi_cood_F = []
     for color in para_list:
@@ -137,7 +137,7 @@ def all_pa2co(para_list):
         color_list_F = []
         for frag in color:
             S_cood = para2cood_S(frag.squeeze())
-            F_cood = para2cood_F(frag.squeeze())
+            F_cood = para2cood_F(frag.squeeze(), img_width=width)
             color_list_S.append(S_cood)
             color_list_F.append(F_cood)
         epi_cood_S.append(color_list_S)
@@ -217,12 +217,13 @@ def pair_and_key_gen(pair, cam_list=[], cam_pairs_F=[], dest_dir="temp"):
         n_fragment_ids_cam2: cam1内のあるfragmentに対応するcam2内のfragmentのidの数
     """
     #pair_list = {}
+    h, w, _ = cam_list[0].img_shape
     F = cam_pairs_F[pair]
     frags_para12 = epilines_para(cam_list[pair[0]].frag_list, F)  # frags_para[色][frag]
     #frags_para21 = epilines_para(cam_list[pair[1]].frag_list, F.T)
 
     cood_S, cood_F = get_frag_cood(cam_list[pair[1]].frag_list)
-    epi_cood_S, epi_cood_F = all_pa2co(frags_para12)
+    epi_cood_S, epi_cood_F = all_pa2co(frags_para12, w)
     img_list1 = make_pair_list(epi_cood_S, epi_cood_F, cood_S, cood_F)
 
     # cood_S, cood_F = get_frag_cood(cam_list[pair[0]].frag_list)
@@ -244,16 +245,17 @@ def pair_and_key_gen(pair, cam_list=[], cam_pairs_F=[], dest_dir="temp"):
 
 def PL_coll(pair, pair_list_taged, cam_list, cam_pairs_F=[]):
     """線と点の衝突判定"""
+    h, w, _ = cam_list[0].img_shape
     F = cam_pairs_F[pair[0]]
     if pair[1] == "F":
         frags_para = epilines_para(
             cam_list[pair[0][0]].frag_list, F
         )  # frags_para[色][frag]
-        epi_cood_S, epi_cood_F = all_pa2co(frags_para)
+        epi_cood_S, epi_cood_F = all_pa2co(frags_para, w)
         camL_idx = pair[0][1]
     elif pair[1] == "R":
         frags_para = epilines_para(cam_list[pair[0][1]].frag_list, F.T)
-        epi_cood_S, epi_cood_F = all_pa2co(frags_para)
+        epi_cood_S, epi_cood_F = all_pa2co(frags_para, w)
         camL_idx = pair[0][0]
 
     im_list = []

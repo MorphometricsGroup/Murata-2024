@@ -33,7 +33,8 @@ class Camera:
             img = cv2.flip(img, 1)
             img_list.append(img)
         self.img = img_list  # 画像(ndarray)
-
+        self.img_shape = img_list[0].shape
+        
     def contour_extraction(
         self,
         labels=[
@@ -54,7 +55,7 @@ class Camera:
 
         TODO: 画像を1チャネルに変える
         """
-
+        rng = np.random.default_rng()
         n_labels = len(labels)
         color_arr = np.array(labels, dtype=np.int16)
         masks = np.ones(
@@ -90,18 +91,31 @@ class Camera:
             if max_num < temp_max:
                 max_num = temp_max
         self.max_num = max_num
-
+        
+    def occlusion_load(self, occlusion_path=""):
+        with open(occlusion_path, "rb") as f:
+            self.occlusion = pickle.load(f)[self.img_num]
+            
     def correspondence_contour(self):
         correspondence_list = []
 
-        for i in range(self.max_num + 1):
+        for i in range(int(self.max_num + 1)):
             temp_c_list = []
             idx = np.where(self.labels[self.img_num] == i)
             if idx[0].size != 0:
                 for j in idx[0]:
                     temp_c_list += self.contour_list[j]
             correspondence_list.append(temp_c_list)
-
+        self.contour_list = correspondence_list
+        
+    def calc_leaf_area(self):
+        img_area = self.img_shape[0] * self.img_shape[1]
+        leaf_partiton_list = []
+        for im in self.img:
+            leaf_area_partition = np.sum(np.sum(im, axis=2)>1)/img_area
+            leaf_partiton_list.append(leaf_area_partition)
+        self.leaf_partiton = leaf_partiton_list
+        
     def para_load(self, file_path):
         self.Rt = np.loadtxt(file_path, delimiter="\t")
         self.P = np.dot(self.A, self.Rt[0:3, 0:4])

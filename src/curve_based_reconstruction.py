@@ -431,7 +431,7 @@ def distance_check(distance_list):
     return ac_list, dist_check_list
 
 
-def repro_sparse_core(frag, img_shape=(1080, 1920)):
+def repro_sparse_core(frag, img_shape):
     n_frag, idx = np.unique(frag, axis=0, return_inverse=True)
     n_frag_len = len(n_frag)
     data = np.arange(n_frag_len) + 1
@@ -452,13 +452,13 @@ def repro_sparse_core(frag, img_shape=(1080, 1920)):
         return (spa.tocsr(copy=True), idx, n_frag_len)
 
 
-def repro_sparse(repro_P):
+def repro_sparse(repro_P, img_shape):
     
     k_list = []
     for label in repro_dict_taged[key]:
         l_list = []
         for frag in label:
-            a = repro_sparse_core(frag)
+            a = repro_sparse_core(frag, img_shape)
             l_list.append(a)
 
         k_list.append(l_list)
@@ -486,14 +486,14 @@ def cal_distance_core(repro_frag, con_col):
     return supported, frag_ac
 
 
-def cal_distance(repro_sparse_P, contour_sparse_P):
+def cal_distance(repro_sparse_P, contour_sparse_P, width, hight):
     dist_check_list = []
     ac_list = []
     for repro_col, con_col in zip(repro_sparse_P, contour_sparse_P):
         col_list = []
         ac_col_list = []
         for repro_frag in repro_col:
-            repro_frag = repro_sparse_core(repro_frag, img_shape=(1080, 1920))
+            repro_frag = repro_sparse_core(repro_frag, (width, hight))
             supported, frag_ac = cal_distance_core(repro_frag, con_col)
             col_list.append(supported)
             ac_col_list.append(frag_ac)
@@ -524,6 +524,7 @@ def P_dict_check(repro_dict_taged, cam_list=[]):
     TODO: docstring
     """
     #repro_dict_taged = repro_sparse(repro_dict_taged)
+    h, w, _ = cam_list[0].img_shape
     P_list = []
     P_ac_list = []
     for P_tag in repro_dict_taged:
@@ -532,7 +533,7 @@ def P_dict_check(repro_dict_taged, cam_list=[]):
         contour_P = cam_list[P_tag].contour_img
         # distance_list = cal_distance(repro_P, contour_P)
         # ac_list, dist_check_list = distance_check(distance_list)
-        ac_list, dist_check_list = cal_distance(repro_P, contour_P)
+        ac_list, dist_check_list = cal_distance(repro_P, contour_P, h, w)
         P_list.append(dist_check_list)
         P_ac_list.append(ac_list)
     P_check = np.array(P_list)
