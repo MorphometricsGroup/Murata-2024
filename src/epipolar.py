@@ -146,6 +146,9 @@ def all_pa2co(para_list, width):
 
 
 def coll_t1_t2(epi_cood_S, epi_cood_F, cood_S, cood_F):
+    """接触判定
+    TODO: 速度改善
+    """
     epi_cood_S_bro = np.repeat(epi_cood_S, len(cood_S), axis=0).reshape(
         (epi_cood_S.shape[0], len(cood_S), epi_cood_S.shape[1])
     )
@@ -172,8 +175,25 @@ def coll_det(t1, t2):
 
 
 def make_pair_list(epi_cood_S, epi_cood_F, cood_S, cood_F):
-    """
-    Todo: typo? piar->pair
+    """_summary_
+
+    Parameters
+    ----------
+    epi_cood_S : list of  of list of shape (n_labels, n_fragments) of ndarray of shape (n_coodinates_img1, 2)
+        epilineの始点
+    epi_cood_F : list of  of list of shape (n_labels, n_fragments) of ndarray of shape (n_coodinates_img1, 2)
+        epilineの終点
+    cood_S : list of  of list of shape (n_labels, n_fragments) of ndarray of shape (n_coodinates_img2, 2)
+        投影された側のfragmentの始点
+    cood_F : list of  of list of shape (n_labels, n_fragments) of ndarray of shape (n_coodinates_img2, 2)
+        投影された側のfragmentの終点
+
+    Returns
+    -------
+    _type_
+        _description_
+
+    TODO: 速度改善できれば．
     """
     img_list = []
     for epi_S_col, epi_F_col, S_col, F_col in zip(
