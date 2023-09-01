@@ -11,27 +11,27 @@ curve_sketch
 
    -1_label.ipynb
     
-    input:
+    input: images; camera parameters; polygon or point cloud
     
-    output:
+    output: labels and occlusions
   
    -2_reconstruction.ipynb
     
-    input:
+    input: images; camera parameters; labels; support threshold
     
-    output
+    output: supported curve fragments
   
    -3_B-spline.ipynb
     
-    input:
+    input: supported curve fragments
     
-    output:
+    output: marged curves
   
    -4_visualization.ipynb
     
-    input:
+    input: marged curves
     
-    outout:
+    outout: none
   
    -data
  
