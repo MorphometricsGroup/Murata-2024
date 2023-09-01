@@ -27,6 +27,9 @@ class Camera:
         """
         img_list = []
         for i in range(8):
+            if os.path.exists(os.path.join(dir_path, "{}_{}.png".format(self.img_num, i))) != True:
+                im = np.zeros((1080, 1920, 3), dtype = "uint8")
+                cv2.imwrite(os.path.join(dir_path, "{}_{}.png".format(self.img_num, i)), im)
             file_path = os.path.join(dir_path, "{}_{}.png".format(self.img_num, i))
             img = cv2.imread(file_path, 1)  # BGRで読み込み
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)

@@ -379,7 +379,7 @@ def reprojection_gen_one_label(tag, cam_list=[], tmp_dir="temp"):
         pickle.dump(temp_reprojection_dict, f)
 
 
-def repro_sparse_core(frag, img_shape=(3456, 5184)):
+def repro_sparse_core(frag, img_shape=(1080, 1920)):
     n_frag, idx = np.unique(frag, axis=0, return_inverse=True)
     n_frag_len = len(n_frag)
     data = np.arange(n_frag_len) + 1

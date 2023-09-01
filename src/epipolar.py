@@ -311,7 +311,7 @@ def PL_coll(pair, pair_list_taged, cam_list, cam_pairs_F=[]):
     return im_list
 
 
-def coll_dict_gen(pair, cam_list=[], cam_pairs_F=[]):
+def coll_dict_gen(pair, cam_list=[], cam_pairs_F=[], dest_dir="temp"):
     """点と線の衝突判定
     Parameters
     ======================
@@ -337,16 +337,17 @@ def coll_dict_gen(pair, cam_list=[], cam_pairs_F=[]):
     """
     # coll_dict = {}
     with open(
-        r"temp/{0}_{1}_{2}.pair_list".format(pair[0][0], pair[0][1], pair[1]), "rb"
+        dest_dir+"/"+"{0}_{1}_{2}.pair_list".format(pair[0][0], pair[0][1], pair[1]), "rb"
     ) as f:
         pair_list_taged = pickle.load(f)
 
     im_list = PL_coll(pair, pair_list_taged, cam_list, cam_pairs_F=cam_pairs_F)
-
+    
+    dest_file_path = os.path.join(
+        dest_dir, r"{0}_{1}_{2}.coll_dict".format(pair[0][0], pair[0][1], pair[1])
+    )
     # os.remove(r"temp/{0}_{1}_{2}.pair_list".format(pair[0][0],pair[0][1],pair[1]))
-    with open(
-        r"temp/{0}_{1}_{2}.coll_dict".format(pair[0][0], pair[0][1], pair[1]), "wb"
-    ) as f:
+    with open(dest_file_path, "wb") as f:
         pickle.dump(im_list, f)
 
 
@@ -389,7 +390,7 @@ def pt_pair(coll_list):
     return np.array([pool_i, pool_j])
 
 
-def pair_pt_gen(tag):
+def pair_pt_gen(tag, dest_dir="temp"):
     """_summary_
 
     Parameters
@@ -411,7 +412,7 @@ def pair_pt_gen(tag):
     """
     im_list = []
     with open(
-        r"temp/{0}_{1}_{2}.coll_dict".format(tag[0][0], tag[0][1], tag[1]), "rb"
+        dest_dir+"/"+r"{0}_{1}_{2}.coll_dict".format(tag[0][0], tag[0][1], tag[1]), "rb"
     ) as f:
         coll_dict_taged = pickle.load(f)
     for col in coll_dict_taged:
@@ -425,9 +426,9 @@ def pair_pt_gen(tag):
         im_list.append(col_list)
 
         # pair_pt[i] = im_list
-    os.remove(r"temp/{0}_{1}_{2}.coll_dict".format(tag[0][0], tag[0][1], tag[1]))
+    os.remove(dest_dir+"/"+r"{0}_{1}_{2}.coll_dict".format(tag[0][0], tag[0][1], tag[1]))
 
     with open(
-        r"temp/{0}_{1}_{2}.pair_pt".format(tag[0][0], tag[0][1], tag[1]), "wb"
+        dest_dir+"/"+r"{0}_{1}_{2}.pair_pt".format(tag[0][0], tag[0][1], tag[1]), "wb"
     ) as f:
         pickle.dump(im_list, f)
