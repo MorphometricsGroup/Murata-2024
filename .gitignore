@@ -7,6 +7,9 @@ simlation_data/temp
 simlation_data/.ipynb_checkpoints
 real_data/.ipynb_checkpoints
 real_data/postprocessing/curves
+real_data/postprocessing/output_images
+real_data/postprocessing/output_images_test
+real_data/postprocessing/output_images_test_2
 real_data/masks/legacy
 real_data/labels/legacy
 real_data/images/legacy
