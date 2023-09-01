@@ -26,12 +26,19 @@ class Camera:
 
         TODO: 画像を1チャネルに変える
         """
-        file_path = os.path.join(dir_path, str(self.img_num) + ".png")
-        img = cv2.imread(file_path, 1)  # BGRで読み込み
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        img = cv2.flip(img, 1)
-        self.img = img  # 画像(ndarray)
-
+        img_list = []
+        for i in range(8):
+            if os.path.exists(os.path.join(dir_path, "{}_{}.png".format(self.img_num, i))) != True:
+                im = np.zeros((1080, 1920, 3), dtype = "uint8")
+                cv2.imwrite(os.path.join(dir_path, "{}_{}.png".format(self.img_num, i)), im)
+            file_path = os.path.join(dir_path, "{}_{}.png".format(self.img_num, i))
+            img = cv2.imread(file_path, 1)  # BGRで読み込み
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            img = cv2.flip(img, 1)
+            img_list.append(img)
+        self.img = img_list  # 画像(ndarray)
+        self.img_shape = img_list[0].shape
+        
     def contour_extraction(
         self,
         labels=[
@@ -42,8 +49,7 @@ class Camera:
             [255, 0, 255],
             [0, 255, 255],
             [127, 127, 127],
-            [127, 0, 127],
-            [0, 127, 127],
+            [127, 0, 127]
         ],
     ):
         """Extract contours based on their labels (colors)
@@ -53,17 +59,17 @@ class Camera:
 
         TODO: 画像を1チャネルに変える
         """
-
+        rng = np.random.default_rng()
         n_labels = len(labels)
         color_arr = np.array(labels, dtype=np.int16)
         masks = np.ones(
-            (self.img.shape[0], self.img.shape[1], n_labels), dtype=np.uint8
+            (self.img[0].shape[0], self.img[0].shape[1], n_labels), dtype=np.uint8
         )
 
         for i, color in enumerate(color_arr):
             lower = np.clip(color, 0, 255)
             upper = np.clip(color, 0, 255)
-            img_mask = cv2.inRange(self.img, lower, upper)
+            img_mask = cv2.inRange(self.img[i], lower, upper)
             masks[:, :, i] = img_mask
 
         self.masks = masks # 色ごとのマスク(nd.array)
@@ -79,25 +85,58 @@ class Camera:
         self.contour_list = contour_list  # 輪郭のリスト(list,ndarray)
 
         # self.frag_list = contours2fragments(self.contour_list) # フラグメントのリスト(list,ndarray)
+    def label_load(self, label_path=""):
+        with open(label_path, "rb") as f:
+            self.labels = pickle.load(f)
 
+        max_num = 0
+        for label in self.labels:
+            temp_max = np.max(label)
+            if max_num < temp_max:
+                max_num = temp_max
+        self.max_num = max_num
+        
+    def occlusion_load(self, occlusion_path=""):
+        with open(occlusion_path, "rb") as f:
+            self.occlusion = pickle.load(f)[self.img_num]
+            
+    def correspondence_contour(self):
+        correspondence_list = []
+
+        for i in range(int(self.max_num + 1)):
+            temp_c_list = []
+            idx = np.where(self.labels[self.img_num] == i)
+            if idx[0].size != 0:
+                for j in idx[0]:
+                    temp_c_list += self.contour_list[j]
+            correspondence_list.append(temp_c_list)
+        self.contour_list = correspondence_list
+        
+    def calc_leaf_area(self):
+        img_area = self.img_shape[0] * self.img_shape[1]
+        leaf_partiton_list = []
+        for im in self.img:
+            leaf_area_partition = np.sum(np.sum(im, axis=2)>1)/img_area
+            leaf_partiton_list.append(leaf_area_partition)
+        self.leaf_partiton = leaf_partiton_list
+        
     def para_load(self, file_path):
         self.Rt = np.loadtxt(file_path, delimiter="\t")
         self.P = np.dot(self.A, self.Rt[0:3, 0:4])
         self.cam_world_cood = -np.dot(self.Rt[0:3, 0:3].T, self.Rt[0:3, 3])
-        
-    def get_contour_img(self):
-        kernel = np.ones((3,3),np.uint8)
-        sparse_mats_list = []
-        for j in range(len(self.contour_list)):
-            new_img = np.zeros((self.img.shape[0], self.img.shape[1]),dtype=np.uint8)
-            for i in range(len(self.contour_list[j])):
-                curve = self.contour_list[j][i][~np.isnan(self.contour_list[j][i])].reshape((-1,2)).astype(int)
-                new_img[curve[:,1],curve[:,0]]=True
-            dilation = cv2.dilate(new_img, kernel, iterations = 10)
-            new_img = csr_matrix(dilation, dtype=np.uint8)
-            sparse_mats_list.append(new_img)
 
-        self.contour_img = sparse_mats_list
+
+def cood_to_mask(csv_path, im_shape):
+    idx = np.loadtxt(str(csv_path), delimiter=",")
+    idx = idx.astype(np.int64)
+
+    mask = np.zeros(im_shape, dtype=np.uint8)
+
+    if idx.size == 0:
+        return mask
+
+    mask[idx[0], idx[1]] = 255
+    return mask
 
 
 def cood_to_mask(csv_path, im_shape):
@@ -127,15 +166,33 @@ class metashape_Camera:
         self.img = img  # 画像(ndarray)
         self.img_shape = img.shape
 
-    def contour_load(self, folder="masks/GmJMC025_02_mask"):
+    def contour_load(self, folder="masks/annotation_mask"):
         folder_ = pathlib.Path(folder)
-        masks_path = folder_.glob(str(self.img_num) + "_" + "*" + ".csv")
+        masks_path = folder_.glob(str(self.img_num) + "_" + "*" + ".png")
 
         # mask_list = []
         contour_list = []
         for mask_path in masks_path:
-            mask = cood_to_mask(mask_path, (self.img_shape[0], self.img_shape[1]))
-            #mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)            
+            #mask = cood_to_mask(mask_path, (self.img_shape[0], self.img_shape[1]))
+            mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
+            _, mask = cv2.threshold(mask, 200, 255, cv2.THRESH_BINARY)
+            #self.mask = mask
+            
+            #nlabels, labels = cv2.connectedComponents(mask)
+            #if nlabels>2:
+            #    areas = np.zeros(nlabels)
+            #    area_sum = 0
+            #    for i in range(1,nlabels):
+            #        area = np.sum(labels == i)
+            #        area_sum += area
+            #        areas[i-1]=area
+            #    area_partation = area/area_sum
+            #    if np.max(area_partation)>0.7:
+            #        _mask = labels == np.argmax(area_partation)
+            #        mask = _mask.astype("uint8")*255
+            #    else:
+            #        mask = np.zeros(mask.shape).astype("uint8")
+            
             contours, hierarchy = cv2.findContours(
                 mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE
             )
@@ -174,7 +231,7 @@ class metashape_Camera:
         self.Rt = np.linalg.pinv(self.Rt)
         self.P = np.dot(self.A, self.Rt[0:3, 0:4])
         self.cam_world_cood = -np.dot(self.Rt[0:3, 0:3].T, self.Rt[0:3, 3])
-
+        
 
 def cam_pos_mean(cam_list):
     _cam_pos = np.zeros(3)

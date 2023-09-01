@@ -104,9 +104,6 @@ def FR_check(dict_tag, cam_list=[], cam_pairs_F=[]):
 
 
 def nom_F(F):
-    """
-    Todo: sum -> np.sumの方が良い？
-    """
     return (1 / np.sum(np.sum(F**2)) ** (1 / 2)) * F
 
 
@@ -281,9 +278,9 @@ def TDlines_gen(tag, cam_list=[], cam_pairs_F=[], src_dir="temp"):
             col_list.append(tri_pt)
         temp_TDlines.append(col_list)
 
-    os.remove(r"temp/{0}_{1}_{2}.coordinate_dict".format(tag[0][0], tag[0][1], tag[1]))
+    os.remove(src_dir+"/"+r"{0}_{1}_{2}.coordinate_dict".format(tag[0][0], tag[0][1], tag[1]))
     with open(
-        r"temp/{0}_{1}_{2}.TDlines".format(tag[0][0], tag[0][1], tag[1]), "wb"
+        src_dir+"/"+r"{0}_{1}_{2}.TDlines".format(tag[0][0], tag[0][1], tag[1]), "wb"
     ) as f:
         pickle.dump(temp_TDlines, f)
     # TDlines[j] = temp_TDlines
@@ -465,6 +462,7 @@ def repro_sparse(repro_P, img_shape):
     return k_list
 
 
+
 def cal_distance_core(repro_frag, con_col):
     supported = 0
     if type(repro_frag[0]) == int:
@@ -627,7 +625,7 @@ def gen_support_dict(reprojection_dict, cam_list=[]):
     return support_dict
 
 
-def gen_support(tag, cam_list=[]):
+def gen_support(tag, cam_list=[], dest_dir="temp"):
     """_summary_
 
     Parameters
@@ -657,17 +655,17 @@ def gen_support(tag, cam_list=[]):
     #    return
 
     with open(
-        r"temp/{0}_{1}_{2}.reprojection_dict".format(tag[0][0], tag[0][1], tag[1]), "rb"
+        dest_dir+"/"+r"{0}_{1}_{2}.reprojection_dict".format(tag[0][0], tag[0][1], tag[1]), "rb"
     ) as f:
         repro_dict_taged = pickle.load(f)
     _, P_ac_list, P_check = P_dict_check(repro_dict_taged, cam_list=cam_list)
     check_list = P_check_integration(P_check)
     inter_ac = ac_list_integration(P_ac_list)
     os.remove(
-        r"temp/{0}_{1}_{2}.reprojection_dict".format(tag[0][0], tag[0][1], tag[1])
+        dest_dir+"/"+r"{0}_{1}_{2}.reprojection_dict".format(tag[0][0], tag[0][1], tag[1])
     )
     with open(
-        r"temp/{0}_{1}_{2}.support_dict".format(tag[0][0], tag[0][1], tag[1]), "wb"
+        dest_dir+"/"+r"{0}_{1}_{2}.support_dict".format(tag[0][0], tag[0][1], tag[1]), "wb"
     ) as f:
 
         pickle.dump((check_list, inter_ac), f)
