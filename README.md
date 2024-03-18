@@ -1,4 +1,4 @@
-# curve_sketch
+# curve-based-3d-reconstruction
 curve_sketch
 
  -src
