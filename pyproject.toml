@@ -1,8 +1,9 @@
 [tool.poetry]
-authors = ["Your Name <you@example.com>"]
+authors = ["Murata, Hidekazu <murata@morphometrics.jp>", "Noshita, Koji <noshita@morphometrics.jp>"]
 description = ""
-name = "curve_sketch"
-version = "0.1.0"
+license = "Apache-2.0"
+name = "curve_based_3d_reconstruction"
+version = "1.0.0"
 
 [tool.poetry.dependencies]
 joblib = "^1.1.0"
@@ -14,9 +15,9 @@ python = ">= 3.8, < 3.12"
 scipy = "^1.9.0"
 
 [tool.poetry.dev-dependencies]
-liccheck = "^0.7.2"
 jupyter = "^1.0.0"
 jupyterlab = "^3.4.4"
+liccheck = "^0.7.2"
 tqdm = "^4.64.0"
 
 [build-system]
